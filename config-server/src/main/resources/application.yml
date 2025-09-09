@@ -1,0 +1,18 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: C:/education/bankapp/bank-config-repo  # Локальный путь к репозиторию
+        bootstrap: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
