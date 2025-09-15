@@ -1,0 +1,29 @@
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.1
+    container_name: bank-keycloak
+    ports:
+      - "8085:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: dev-file
+    command:
+      - start-dev
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+  postgres:
+    image: postgres:13
+    container_name: bank-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: accounts_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  keycloak_data:
+  postgres_data:
