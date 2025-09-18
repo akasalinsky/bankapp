@@ -8,11 +8,36 @@ spring:
     config:
       server:
         git:
-          uri: C:/education/bankapp/bank-config-repo  # Локальный путь к репозиторию
+          uri: file:///C:/education/bankapp/bank-config-repo
         bootstrap: true
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            provider: keycloak
+            client-id: bank-client
+            client-secret: secret
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/keycloak"
+            scope: openid, profile, email
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8085/realms/bank-realm
+            user-name-attribute: preferred_username
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085/realms/bank-realm
 
 management:
   endpoints:
     web:
       exposure:
         include: "*"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true

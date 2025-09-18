@@ -1,0 +1,13 @@
+server:
+  port: 8088
+
+spring:
+  application:
+    name: front-ui
+  cloud:
+    config:
+      uri: http://localhost:8888
+
+logging:
+  level:
+    com.practicum.bank.frontend: DEBUG

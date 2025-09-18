@@ -1,3 +1,4 @@
+/*
 package com.example.gateway.filter;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,4 +40,4 @@ public class TokenRelayFilter implements GlobalFilter {
                 .defaultIfEmpty(exchange.getRequest())
                 .flatMap(request -> chain.filter(exchange.mutate().request(request).build()));
     }
-}
+}*/

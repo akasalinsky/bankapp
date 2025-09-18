@@ -10,5 +10,15 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
+    @Bean
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+        http
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/config/**", "/actuator/**").permitAll()
+                        .anyExchange().permitAll()
+                )
+                .csrf(csrf -> csrf.disable()); // Современный синтаксис
 
+        return http.build();
+    }
 }
