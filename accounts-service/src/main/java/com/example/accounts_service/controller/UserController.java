@@ -3,81 +3,75 @@ package com.example.accounts_service.controller;
 import com.example.accounts_service.model.User;
 import com.example.accounts_service.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
 
-    @Autowired
     private UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
 
     @PostMapping("/register")
     public ResponseEntity<User> registerUser(
             @RequestParam String login,
             @RequestParam String password,
-            @RequestParam String fullName,
+            @RequestParam String firstName,
+            @RequestParam String lastName,
             @RequestParam LocalDate birthDate) {
+        System.out.println("Получено" + login + password + firstName + lastName + birthDate);
+
 
         try {
-            User user = userService.registerUser(login, password, fullName, birthDate);
+            System.out.println("Получено" + login + password + firstName + lastName + birthDate);
+            User user = userService.registerUser(login, password, firstName, lastName, birthDate);
             return ResponseEntity.ok(user);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
-    @GetMapping("/{login}")
-    public ResponseEntity<User> getUserByLogin(@PathVariable String login) {
-        return userService.findByLogin(login)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/{userId}/profile")
-    public ResponseEntity<User> updateUserProfile(
-            @PathVariable Long userId,
-            @RequestParam String fullName,
-            @RequestParam LocalDate birthDate) {
-
-        try {
-            User user = userService.updateUserProfile(userId, fullName, birthDate);
-            return ResponseEntity.ok(user);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @PutMapping("/{userId}/password")
+    @PostMapping("/{login}/password")
     public ResponseEntity<?> changePassword(
-            @PathVariable Long userId,
-            @RequestParam String newPassword) {
+            @PathVariable String login,
+            @RequestParam String password,
+            @RequestParam String confirm_password) {
 
         try {
-            userService.changePassword(userId, newPassword);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+            if (!password.equals(confirm_password)) {
+                return ResponseEntity.badRequest().body("Пароли не совпадают.");
+            }
+
+            userService.changePassword(login, password);
+            return ResponseEntity.ok().build();  // Перенаправляем на главную без ошибок
+
+        } catch (Exception e) {
+            System.err.println("Ошибка Keycloak при смене пароля для " + login + ": " + e.getMessage());
+
+            // Важно: возвращаем сообщение, которое может быть полезно для отладки
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Ошибка при смене пароля: " + e.getMessage());        }
     }
 
-    @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
-        List<User> users = userService.getAllUsers();
-        return ResponseEntity.ok(users);
-    }
-
-    @DeleteMapping("/{userId}")
-    public ResponseEntity<?> deleteUser(@PathVariable Long userId) {
+    @PostMapping("/{login}/profile")
+    public ResponseEntity<?> updateProfile(
+            @PathVariable String login,
+            @RequestParam(required = false) String firstName,
+            @RequestParam(required = false) String lastName,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) LocalDate birthdate) {
         try {
-            userService.deleteUser(userId);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
+            userService.updateUserProfile(login, firstName, lastName, email, birthdate);
+            return ResponseEntity.ok().build();  // Перенаправляем на главную без ошибок
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();  // Возвращаем на главную с ошибками
         }
     }
 }

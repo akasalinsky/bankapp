@@ -1,61 +1,101 @@
 package com.example.accounts_service.service;
 
 import com.example.accounts_service.model.User;
+import com.example.accounts_service.repository.AccountRepository;
 import com.example.accounts_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.HashMap;
+
 
 
 @Service
 public class UserService {
-    @Autowired
+
+
     private UserRepository userRepository;
+    private final KeycloakClient keycloakClient;
+    private final AccountService accountService; // <-- Внедряем AccountService
 
-    public User registerUser(String login, String password, String fullName, LocalDate birthDate){
-        if (userRepository.existsByLogin(login)) {
-            throw new RuntimeException("Пользователь с логином " + login + " уже существует");
-        }
 
-        if (birthDate.isAfter(LocalDate.now().minusYears(18))) {
-            throw new RuntimeException("Пользователь должен быть старше 18 лет");
-        }
-
-        User user = new User(login, password, fullName, birthDate);
-        return userRepository.save(user);
+    public UserService(UserRepository userRepository, AccountService accountService, KeycloakClient keycloakClient) {
+        this.userRepository = userRepository;
+        this.keycloakClient = keycloakClient;
+        this.accountService = accountService; // <-- Инициализируем
 
     }
+
+
+    @Transactional
+    public User registerUser(String login, String password,
+                             String firstName, String lastName, LocalDate birthDate) {
+        String keycloakId = keycloakClient.createUserInKeycloak(login, password, firstName, lastName, birthDate);
+
+        User newUser = new User(keycloakId);
+        newUser.setKeycloakId(keycloakId);
+
+        User savedUser = userRepository.save(newUser);
+
+        accountService.createDefaultAccountsForUser(savedUser);
+
+        return savedUser;
+
+    }
+
+
     public Optional<User> findByLogin(String login) {
-        return userRepository.findByLogin(login);
+        return userRepository.findByKeycloakId(login);
     }
 
-    public User updateUserProfile(Long userId, String fullName, LocalDate birthDate) {
-        // Проверка возраста
-        if (birthDate.isAfter(LocalDate.now().minusYears(18))) {
-            throw new RuntimeException("Пользователь должен быть старше 18 лет");
+    public void updateUserProfile(String login, String firstName, String lastName, String email, LocalDate birthDate) {
+        String keycloakUserId = keycloakClient.getUserIdByUsername(login);
+        Map<String, Object> userUpdateBody = keycloakClient.getUserInfo(keycloakUserId);
+        if (firstName != null && !firstName.trim().isEmpty()) {
+            userUpdateBody.put("firstName", firstName);
+        }
+        if (lastName != null && !lastName.trim().isEmpty()) {
+            userUpdateBody.put("lastName", lastName);
+        }
+        // Электронная почта
+        if (email != null && !email.trim().isEmpty()) {
+            userUpdateBody.put("email", email);
+            userUpdateBody.put("emailVerified", true);
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+        // Атрибуты (дата рождения)
+        String birthDateString = null;
+        if (birthDate != null) {
+            birthDateString = birthDate.format(DateTimeFormatter.ISO_DATE);
+        }
+        Map<String, List<String>> attributes = (Map<String, List<String>>) userUpdateBody.getOrDefault("attributes", new HashMap<>());
 
-        user.setFullName(fullName);
-        user.setBirthDate(birthDate);
+        if (birthDateString != null) {
+            attributes.put("birthdate", Collections.singletonList(birthDateString));
+        } else {
+            // Если дата рождения не передана (null), удаляем ее из атрибутов,
+            // чтобы Keycloak не использовал старое значение, если пользователь хочет его стереть.
+            attributes.remove("birthdate");
+        }
+        userUpdateBody.put("attributes", attributes);
 
-        return userRepository.save(user);
-    }
+        // 4. ОТПРАВЛЯЕМ ПОЛНЫЙ ИЗМЕНЕННЫЙ ОБЪЕКТ ОБРАТНО (PUT)
+        keycloakClient.updateUserProfile( keycloakUserId, userUpdateBody);    }
 
-    public void changePassword(Long userId, String newPassword) {
+    public void changePassword(String login, String newPassword) {
         if (newPassword == null || newPassword.isEmpty()) {
             throw new RuntimeException("Пароль не может быть пустым");
         }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
-
-        user.setPassword(newPassword);
-        userRepository.save(user);
+        String keycloakUserId = keycloakClient.getUserIdByUsername(login);
+        keycloakClient.updateUserPassword(keycloakUserId, newPassword);
     }
 
     public List<User> getAllUsers() {

@@ -4,30 +4,7 @@ server:
 spring:
   application:
     name: accounts-service
-  cloud:
-    config:
-      uri: http://localhost:8888
-
-  # ОБЯЗАТЕЛЬНЫЕ настройки базы данных (не зависят от Config Server)
-  datasource:
-    url: jdbc:postgresql://localhost:5432/accounts_db
-    username: postgres
-    password: postgres
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-
-# Eureka настройки (если Config Server не отдает)
-eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-  instance:
-    prefer-ip-address: true
 
 logging:
   level:
-    com.practicum.bank.accounts: DEBUG
+    com.practicum.bank.account-service: DEBUG

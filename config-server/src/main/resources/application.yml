@@ -12,19 +12,6 @@ spring:
         bootstrap: true
   security:
     oauth2:
-      client:
-        registration:
-          keycloak:
-            provider: keycloak
-            client-id: bank-client
-            client-secret: secret
-            authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/login/oauth2/code/keycloak"
-            scope: openid, profile, email
-        provider:
-          keycloak:
-            issuer-uri: http://localhost:8085/realms/bank-realm
-            user-name-attribute: preferred_username
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8085/realms/bank-realm
