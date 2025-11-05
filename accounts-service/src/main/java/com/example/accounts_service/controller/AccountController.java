@@ -2,12 +2,35 @@ package com.example.accounts_service.controller;
 
 import com.example.accounts_service.model.Account;
 import com.example.accounts_service.model.Currency;
+import com.example.accounts_service.model.User;
 import com.example.accounts_service.service.AccountService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.ui.Model;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.example.accounts_service.model.Account;
+import com.example.accounts_service.service.AccountService;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -17,82 +40,180 @@ public class AccountController {
     @Autowired
     private AccountService accountService;
 
+    private record TransferRequest(
+            @JsonProperty("fromLogin") String fromLogin,
+            @JsonProperty("toLogin") String toLogin,
+            @JsonProperty("fromCurrency") String fromCurrency,
+            @JsonProperty("toCurrency") String toCurrency,
+            @JsonProperty("amount") BigDecimal amount) {}
+
+    // Внутренний класс для запроса на пополнение/снятие
+    private record BalanceUpdateRequest(
+            String keycloakId,
+            String currency,
+            BigDecimal amount,
+            String operationType) {}
+
+
     @PostMapping
     public ResponseEntity<Account> createAccount(
-            @RequestParam Long userId,
+            @RequestParam String login,
             @RequestParam Currency currency) {
 
         try {
-            Account account = accountService.createAccount(userId, currency);
+            Account account = accountService.createAccount(login, currency);
             return ResponseEntity.ok(account);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Account>> getUserAccounts(@PathVariable Long userId) {
-        try {
-            List<Account> accounts = accountService.getUserAccounts(userId);
-            return ResponseEntity.ok(accounts);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @GetMapping("/{accountId}")
-    public ResponseEntity<Account> getAccount(@PathVariable Long accountId) {
-        return accountService.getAccount(accountId)
+    @GetMapping("/{login}")
+    public ResponseEntity<User> getUserByLogin(@PathVariable String login) {
+        return accountService.findByLogin(login)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/{accountId}")
-    public ResponseEntity<Account> updateAccount(
-            @PathVariable Long accountId,
-            @RequestParam Currency currency) {
-
+    @GetMapping("/{login}/accounts")
+    public ResponseEntity<List<Account>> getUserAccounts(@PathVariable String login) {
         try {
-            Account account = accountService.updateAccount(accountId, currency);
-            return ResponseEntity.ok(account);
+            System.out.println("Ищем счета");
+            List<Account> accounts = accountService.getUserAccountsByLogin(login);
+            return ResponseEntity.ok(accounts);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @DeleteMapping("/{accountId}")
-    public ResponseEntity<?> deleteAccount(@PathVariable Long accountId) {
-        try {
-            accountService.deleteAccount(accountId);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
+            System.out.println("Ошибка при получении счетов");
             return ResponseEntity.notFound().build();
         }
     }
 
-    @PostMapping("/{accountId}/deposit")
+    @PostMapping("/{login}/deposit")
     public ResponseEntity<?> deposit(
-            @PathVariable Long accountId,
-            @RequestParam BigDecimal amount) {
+            @PathVariable String login,
+            @RequestParam BigDecimal amount,
+            @RequestParam Currency currency) {
 
         try {
-            accountService.deposit(accountId, amount);
+            accountService.deposit(login, amount, currency);
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    @PostMapping("/{accountId}/withdraw")
+    @PostMapping("/{login}/withdraw")
     public ResponseEntity<?> withdraw(
-            @PathVariable Long accountId,
-            @RequestParam BigDecimal amount) {
+            @PathVariable String login,
+            @RequestParam BigDecimal amount,
+            @RequestParam Currency currency) {
 
         try {
-            accountService.withdraw(accountId, amount);
+            accountService.withdraw(login, amount, currency);
             return ResponseEntity.ok().build();
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    @GetMapping("/user/{keycloakId}")
+    public ResponseEntity<Map<String, Object>> getUserInfo(@PathVariable String keycloakId) {
+        // Проверка, что аутентифицированный пользователь запрашивает свои данные
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.getName().equals(keycloakId)) {
+            // Защита от запроса чужих данных
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        try {
+            List<Account> accounts = accountService.getUserAccounts(keycloakId);
+
+            // Извлечение данных из JWT для отображения в front-ui
+            String firstName = null;
+            String lastName = null;
+            if (auth instanceof JwtAuthenticationToken jwtAuth) {
+                Jwt jwt = jwtAuth.getToken();
+                firstName = jwt.getClaimAsString("given_name");
+                lastName = jwt.getClaimAsString("family_name");
+            }
+
+            // Формирование ответа
+            Map<String, Object> response = Map.of(
+                    "keycloakId", keycloakId,
+                    "firstName", firstName != null ? firstName : "Имя",
+                    "lastName", lastName != null ? lastName : "Фамилия",
+                    "birthdate", "2000-01-01", // Моковая дата рождения
+                    "accounts", accounts.stream().map(a -> Map.of(
+                            "currency", a.getCurrency().name(),
+                            "balance", a.getBalance().toString()
+                    )).collect(Collectors.toList())
+            );
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+    }
+
+    // --------------------------------------------------------
+    // Эндпоинты для перевода (вызываются front-ui)
+    // --------------------------------------------------------
+
+    /**
+     * Внутренний перевод (между своими счетами).
+     */
+    @PostMapping("/transfer/self")
+    public ResponseEntity<String> transferSelf(@RequestBody TransferRequest request) {
+        // Проверка: отправитель и получатель должны быть текущим пользователем
+        /*Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.getName().equals(request.fromKeycloakId()) || !request.fromKeycloakId().equals(request.toKeycloakId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied for self-transfer.");
+        }*/
+
+        try {
+            accountService.transferFunds(
+                    request.fromLogin(),
+                    request.toLogin(),
+                    request.fromCurrency(),
+                    request.toCurrency(),
+                    request.amount()
+            );
+            return ResponseEntity.ok("Transfer successful.");
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    /**
+     * Перевод другому пользователю.
+     */
+    @PostMapping("/transfer/other")
+    public ResponseEntity<String> transferOther(@RequestBody TransferRequest request) {
+        // Проверка: только отправитель должен быть текущим пользователем
+        /*Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.getName().equals(request.fromKeycloakId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied for initiating transfer.");
+        }*/
+
+        // Дополнительная проверка, чтобы исключить использование этого эндпоинта для self-переводов
+        if (request.fromLogin().equals(request.toLogin())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use /transfer/self endpoint for self transfers.");
+        }
+
+        try {
+            accountService.transferFunds(
+                    request.fromLogin(),
+                    request.toLogin(),
+                    request.fromCurrency(),
+                    request.toCurrency(),
+                    request.amount()
+            );
+            return ResponseEntity.ok("Transfer successful.");
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+
+
+
 }

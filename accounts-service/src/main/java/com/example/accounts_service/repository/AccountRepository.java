@@ -15,4 +15,8 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     Optional<Account> findByUserAndCurrency(User user, Currency currency);
     boolean existsByUserAndCurrency(User user, Currency currency);
 
+
+    //List<Account> findByLogin(String login);
+    //boolean existsByUserId(Long userId);      // ✅ Для проверки существования
+
 }

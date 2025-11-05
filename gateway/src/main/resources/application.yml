@@ -4,6 +4,7 @@ server:
 spring:
   application:
     name: gateway
-  cloud:
-    config:
-      uri: http://localhost:8888
+
+logging:
+  level:
+    com.practicum.bank.account-service: DEBUG

@@ -1,0 +1,10 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: notification-service
+
+logging:
+  level:
+    com.practicum.bank.notification-serivce: DEBUG

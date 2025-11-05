@@ -1,7 +1,6 @@
 package com.example.accounts_service.model;
 
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 
 @Entity
@@ -21,7 +20,7 @@ public class Account {
     private Currency currency;
 
     @Column(nullable = false, precision = 19, scale = 2)
-    private BigDecimal balance;
+    private BigDecimal balance = BigDecimal.ZERO; // инициализация
 
     public Account() {
     }
@@ -29,6 +28,7 @@ public class Account {
     public Account(User user, Currency currency) {
         this.user = user;
         this.currency = currency;
+        this.balance = BigDecimal.ZERO;
     }
 
     public Long getId() {
@@ -63,7 +63,7 @@ public class Account {
         this.balance = balance;
     }
 
-    public void deposit(BigDecimal amount){
+    public void deposit(BigDecimal amount) {
         this.balance = this.balance.add(amount);
     }
 
@@ -74,5 +74,4 @@ public class Account {
         }
         return false;
     }
-
 }
