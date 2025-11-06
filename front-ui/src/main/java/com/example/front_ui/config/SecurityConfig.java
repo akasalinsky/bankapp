@@ -14,22 +14,16 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // 1. Внедряем ClientRegistrationRepository, чтобы получить OIDC-провайдера
     private final ClientRegistrationRepository clientRegistrationRepository;
 
     public SecurityConfig(ClientRegistrationRepository clientRegistrationRepository) {
         this.clientRegistrationRepository = clientRegistrationRepository;
     }
 
-    // 2. Создаем бин OidcClientInitiatedLogoutSuccessHandler
     @Bean
     public OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler() {
         OidcClientInitiatedLogoutSuccessHandler successHandler =
                 new OidcClientInitiatedLogoutSuccessHandler(this.clientRegistrationRepository);
-
-        // 3. Указываем URI, куда Keycloak должен вернуть пользователя ПОСЛЕ выхода
-        //    {baseUrl} - это плейсхолдер, который Spring Security заменит на
-        //    адрес вашего приложения (например, http://localhost:8080/).
         successHandler.setPostLogoutRedirectUri("{baseUrl}/");
 
         return successHandler;
@@ -37,25 +31,23 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler) // <-- 4. Внедряем наш хэндлер
+                                                   OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler)
             throws Exception {
-        http
+                http
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/signup", "/register", "/css/**", "/js/**", "/error**").permitAll()
+                        .requestMatchers("/login", "/signup", "/register", "/css/**", "/js/**", "/error**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
-                        .defaultSuccessUrl("/", true)
+                        .loginPage("/login")
+                        .defaultSuccessUrl("/")
                         .permitAll()
                 )
-                // 5. Добавляем конфигурацию logout
                 .logout(logout -> logout
-                        // Используем наш кастомный OIDC-хэндлер
                         .logoutSuccessHandler(oidcLogoutSuccessHandler)
-                        // Разрешаем доступ к эндпоинту /logout всем
                         .permitAll()
-                );
-
+                )
+                .csrf(csrf -> csrf.disable());
         return http.build();
     }
 }

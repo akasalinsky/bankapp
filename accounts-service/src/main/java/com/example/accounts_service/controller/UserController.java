@@ -43,19 +43,16 @@ public class UserController {
             @PathVariable String login,
             @RequestParam String password,
             @RequestParam String confirm_password) {
-
         try {
             if (!password.equals(confirm_password)) {
                 return ResponseEntity.badRequest().body("Пароли не совпадают.");
             }
 
             userService.changePassword(login, password);
-            return ResponseEntity.ok().build();  // Перенаправляем на главную без ошибок
+            return ResponseEntity.ok().build();
 
         } catch (Exception e) {
             System.err.println("Ошибка Keycloak при смене пароля для " + login + ": " + e.getMessage());
-
-            // Важно: возвращаем сообщение, которое может быть полезно для отладки
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Ошибка при смене пароля: " + e.getMessage());        }
     }

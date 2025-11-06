@@ -1,9 +1,9 @@
 package com.example.accounts_service.model;
 
 public enum Currency {
-    RUB("Рубль", "₽"),
-    USD("Доллар","$"),
-    CNY("Юань","¥");
+    RUB("Рубль", "₽");
+    //USD("Доллар","$"),
+    //CNY("Юань","¥");
 
     private final String title;
     private final String symbol;

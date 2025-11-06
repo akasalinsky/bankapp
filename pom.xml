@@ -17,9 +17,6 @@
         <module>front-ui</module>
         <module>cash-service</module>
         <module>transfer-service</module>
-        <module>exchange-service</module>
-        <module>exchange-generator</module>
-        <module>blocker-service</module>
         <module>notification-service</module>
     </modules>
 

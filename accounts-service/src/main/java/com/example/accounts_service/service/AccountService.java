@@ -158,46 +158,54 @@ public class AccountService {
             String toCurrencyCode,
             BigDecimal amount) {
 
+        // --- Шаг 1: Проверка Keycloak ID и бизнес-правила
+
+        // Получение и проверка Keycloak ID
         String fromKeycloakId = keycloakClient.getUserIdByUsername(fromLogin);
+        if (fromKeycloakId == null || fromKeycloakId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Source user (Keycloak ID) not found for login: " + fromLogin);
+        }
         String toKeycloakId = keycloakClient.getUserIdByUsername(toLogin);
+        if (toKeycloakId == null || toKeycloakId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Destination user (Keycloak ID) not found for login: " + toLogin);
+        }
 
-        System.out.println("fromKeycloakId: " + fromKeycloakId + "toKeycloakId: " + toKeycloakId);
+        System.out.println("fromKeycloakId: " + fromKeycloakId + " toKeycloakId: " + toKeycloakId);
 
-        // 1. Находим пользователей
+        // Новое бизнес-правило: Валюты должны совпадать, т.к. конвертации нет
+        if (!fromCurrencyCode.equals(toCurrencyCode)) {
+            throw new IllegalArgumentException("Cross-currency transfers are not supported by this service.");
+        }
+
+        // --- Шаг 2: Находим пользователей и счета
+
+        // Находим пользователей в локальной БД
         User fromUser = userRepository.findByKeycloakId(fromKeycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("Source user not found."));
         User toUser = userRepository.findByKeycloakId(toKeycloakId)
                 .orElseThrow(() -> new IllegalArgumentException("Destination user not found."));
 
-        Currency fromCurrency = Currency.valueOf(fromCurrencyCode);
-        Currency toCurrency = Currency.valueOf(toCurrencyCode);
+        Currency currency = Currency.valueOf(fromCurrencyCode);
 
-        // 2. Находим счета
+        // Находим счета (валюта одинаковая)
         Account fromAccount = accountRepository
-                .findByUserAndCurrency(fromUser, fromCurrency)
+                .findByUserAndCurrency(fromUser, currency)
                 .orElseThrow(() -> new IllegalArgumentException("Source account not found for currency: " + fromCurrencyCode));
 
         Account toAccount = accountRepository
-                .findByUserAndCurrency(toUser, toCurrency)
+                .findByUserAndCurrency(toUser, currency)
                 .orElseThrow(() -> new IllegalArgumentException("Destination account not found for currency: " + toCurrencyCode));
 
-        // 3. Проверяем баланс и выполняем списание
+        // --- Шаг 3: Проверяем баланс, списываем и зачисляем
+
+        // 1. Списание
         if (!fromAccount.withdraw(amount)) {
             throw new IllegalArgumentException("Insufficient funds in " + fromCurrencyCode + " account.");
         }
-        accountRepository.save(fromAccount); // Сохраняем списание
+        accountRepository.save(fromAccount);
 
-        // 4. Рассчитываем сумму для зачисления с учетом конвертации
-        BigDecimal depositAmount;
-        if (fromCurrency.equals(toCurrency)) {
-            depositAmount = amount;
-        } else {
-            // Требуется конвертация через Exchange Service
-            depositAmount = exchangeServiceClient.convert(fromCurrencyCode, toCurrencyCode, amount);
-        }
-
-        // 5. Зачисляем средства
-        toAccount.deposit(depositAmount);
+        // 2. Зачисление (сумма для зачисления равна исходной сумме, т.к. нет конвертации)
+        toAccount.deposit(amount);
         accountRepository.save(toAccount);
     }
 }

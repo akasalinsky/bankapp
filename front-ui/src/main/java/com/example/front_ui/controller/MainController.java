@@ -26,6 +26,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -108,16 +109,6 @@ public class MainController {
                 headers.setBearerAuth(jwtToken);
                 HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            /*try {
-                // Получаем курсы валют из Exchange Service
-                String exchangeUrl = exchangeServiceUrl + "/api/exchange/rates";
-                List<ExchangeRate> rates = restTemplate.getForObject(exchangeUrl, List.class);
-                model.addAttribute("exchangeRates", rates);
-
-            } catch (Exception e) {
-                model.addAttribute("exchangeRates", java.util.List.of());
-            }*/
-
                 try {
                     String accountsUrl = accountsServiceUrl + "/api/accounts/" + login + "/accounts";
                     System.out.println("Fetching accounts from: " + accountsUrl);
@@ -163,6 +154,11 @@ public class MainController {
                 e.printStackTrace();
             }
             return "main";
+    }
+
+    @GetMapping("/login")
+    public String loginPage() {
+        return "login";
     }
 
     private String getJwtToken(Authentication authentication) {
@@ -247,12 +243,37 @@ public class MainController {
             @RequestParam String lastName,
             @RequestParam String birthdate,
             Model model,
-            HttpServletRequest request) {
+            RedirectAttributes redirectAttributes) {
 
         try {
+
             if (!password.equals(confirm_password)) {
-                model.addAttribute("error", "Пароли не совпадают");
-                return "signup";
+                redirectAttributes.addFlashAttribute("error", "Пароли не совпадают");
+                return "redirect:/signup";
+            }
+            // Проверка даты рождения
+            if (birthdate == null || birthdate.trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("error", "Дата рождения обязательна для заполнения");
+                return "redirect:/signup";
+            }
+
+            LocalDate birthDate;
+            try {
+                birthDate = LocalDate.parse(birthdate);
+            } catch (DateTimeParseException e) {
+                redirectAttributes.addFlashAttribute("error", "Неверный формат даты рождения. Используйте формат ГГГГ-ММ-ДД");
+                return "redirect:/signup";
+            }
+
+            if (birthDate.isAfter(LocalDate.now())) {
+                redirectAttributes.addFlashAttribute("error", "Дата рождения не может быть в будущем");
+                return "redirect:/signup";
+            }
+
+            LocalDate eighteenYearsAgo = LocalDate.now().minusYears(18);
+            if (birthDate.isAfter(eighteenYearsAgo)) {
+                redirectAttributes.addFlashAttribute("error", "Регистрация возможна только для лиц старше 18 лет");
+                return "redirect:/signup";
             }
 
             String registerUrl = UriComponentsBuilder.fromUriString(accountsServiceUrl)
@@ -269,8 +290,8 @@ public class MainController {
             return "redirect:/login";
 
         } catch (Exception e) {
-            model.addAttribute("error", "Ошибка регистрации: " + e.getMessage());
-            return "signup";
+            redirectAttributes.addFlashAttribute("error", "Ошибка регистрации: " + e.getMessage());
+            return "redirect:/signup";
         }
     }
 
@@ -292,7 +313,6 @@ public class MainController {
                 return "redirect:/";
             }
 
-            // 3. Создаем заголовки с токеном
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(jwtToken);
 
@@ -302,10 +322,9 @@ public class MainController {
                     .queryParam("password", password)
                     .queryParam("confirm_password", confirm_password);
 
-            // 5. Создаем HttpEntity (тело пустое, т.к. параметры в URL)
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            restTemplate.exchange( // <-- 5. Использует .exchange()
+            restTemplate.exchange(
                     builder.toUriString(),
                     HttpMethod.POST,
                     entity,
@@ -362,10 +381,9 @@ public class MainController {
     @PostMapping("/user/{login}/transfer")
     public String handleTransfer(
             @PathVariable String login,
-            @RequestParam("from_currency") String fromCurrency,
-            @RequestParam("to_currency") String toCurrency,
+            @RequestParam("from_currency") String fromCurrency, // Имя из формы
             @RequestParam("value") BigDecimal value,
-            @RequestParam("to_login") String toLogin,
+            @RequestParam("to_login") String toLogin, // Добавили параметр для логина получателя
             Authentication authentication,
             RedirectAttributes redirectAttributes) {
 
@@ -375,13 +393,13 @@ public class MainController {
             return "redirect:/";
         }
 
-        // Внутренний перевод
-        if (login.equals(toLogin)) {
-            return transferToSelf(login, fromCurrency, toCurrency, value, jwtToken, redirectAttributes);
-        } else {
-            // Перевод другому
-            return transferToOther(login, toLogin, fromCurrency, toCurrency, value, jwtToken, redirectAttributes);
-        }
+        // Передаем правильные параметры:
+        // 1. login - логин отправителя (из @PathVariable)
+        // 2. toLogin - логин получателя (из @RequestParam)
+        // 3. fromCurrency - валюта (из @RequestParam)
+        // 4. value - сумма (из @RequestParam)
+        // 5. jwtToken - токен
+        return transferToOther(login, toLogin, fromCurrency, value, jwtToken, redirectAttributes);
     }
 
     private HttpHeaders createHeaders(String jwtToken) {
@@ -425,17 +443,17 @@ public class MainController {
         }
     }
 
-    private String transferToOther(String fromLogin, String toLogin, String fromCurrency, String toCurrency, BigDecimal value, String jwtToken, RedirectAttributes redirectAttributes) {
+    private String transferToOther(String fromLogin, String toLogin, String fromCurrency, BigDecimal value, String jwtToken, RedirectAttributes redirectAttributes) {
         try {
             HttpHeaders headers = createHeaders(jwtToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             // Тело запроса для перевода другому
             Map<String, Object> transferRequest = Map.of(
-                    "fromKeycloakId", fromLogin,
-                    "toKeycloakId", toLogin,
-                    "fromCurrency", fromCurrency,
-                    "toCurrency", toCurrency,
+                    "fromLogin", fromLogin, // Логин отправителя
+                    "toLogin", toLogin,     // Логин получателя
+                    "fromCurrency", fromCurrency, // Валюта отправителя
+                    "toCurrency", fromCurrency, // Так как конвертации нет, валюта получателя та же
                     "amount", value
             );
 
@@ -448,15 +466,16 @@ public class MainController {
                     String.class
             );
 
-            redirectAttributes.addFlashAttribute("transferOtherSuccess", List.of("Перевод другому пользователю выполнен успешно."));
+            redirectAttributes.addFlashAttribute("transferOtherSuccess", List.of("Перевод пользователю **" + toLogin + "** на сумму " + value.toPlainString() + " **" + fromCurrency + "** выполнен успешно."));
             return "redirect:/";
 
         } catch (HttpClientErrorException e) {
-            redirectAttributes.addFlashAttribute("transferOtherErrors", List.of("Ошибка перевода другому: " + e.getResponseBodyAsString()));
-            return "redirect:/";
+            // Убедитесь, что e.getResponseBodyAsString() возвращает полезную информацию
+            redirectAttributes.addFlashAttribute("transferOtherErrors", List.of("Ошибка перевода: " + (e.getResponseBodyAsString().isEmpty() ? e.getMessage() : e.getResponseBodyAsString())));
+            return "redirect:/user/" + fromLogin; // Лучше редирект обратно на страницу пользователя
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("transferOtherErrors", List.of("Непредвиденная ошибка: " + e.getMessage()));
-            return "redirect:/";
+            return "redirect:/user/" + fromLogin;
         }
     }
 
