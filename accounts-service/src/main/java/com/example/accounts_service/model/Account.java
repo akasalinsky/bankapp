@@ -20,7 +20,7 @@ public class Account {
     private Currency currency;
 
     @Column(nullable = false, precision = 19, scale = 2)
-    private BigDecimal balance = BigDecimal.ZERO; // инициализация
+    private BigDecimal balance = BigDecimal.ZERO;
 
     public Account() {
     }

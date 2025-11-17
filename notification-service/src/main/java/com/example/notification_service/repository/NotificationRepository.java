@@ -9,7 +9,6 @@ import java.util.List;
 
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
-    List<Notification> findByLoginOrderByTimestampDesc(String login);  // Заменили accountId на login
-    List<Notification> findByLoginAndTypeOrderByTimestampDesc(String login, NotificationType type);
-    List<Notification> findByIsSentFalse();
+    List<Notification> findByKeycloakIdOrderByTimestampDesc(String keycloakId);
+    List<Notification> findByUserLoginOrderByTimestampDesc(String userLogin);
 }

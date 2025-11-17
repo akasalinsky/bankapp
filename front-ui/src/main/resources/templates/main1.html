@@ -6,6 +6,7 @@
     <script language="JavaScript">
         setInterval(() => {
             var td = document.getElementById('exchange_rates');
+            // Используем относительный путь для вызова API через наш front-ui
             fetch('/api/exchange/rates')
                 .then(response => response.json())
                 .then(json => {
@@ -23,37 +24,7 @@
                     td.innerHTML = table;
                 })
                 .catch(error => td.innerHTML = 'Ошибка при получении данных курсов валют');
-        }, 10000);
-    </script>
-    <script th:inline="javascript">
-        /*<![CDATA[*/
-
-        // Данные балансов из Thymeleaf с защитой от null
-        var balances = {};
-        <th:block th:each="account : ${accounts}">
-            <th:block th:if="${account != null and account.currency != null}">
-            balances[[${account.currency}]] = [[${account.balance ?: '0.00'}]];
-            </th:block>
-        </th:block>
-
-        function updateBalance() {
-            var currencySelect = document.getElementById('currencySelect');
-            var selectedCurrency = currencySelect ? currencySelect.value : '';
-            var balanceDisplay = document.getElementById('balanceDisplay');
-
-            if (selectedCurrency && balances[selectedCurrency] !== undefined) {
-                balanceDisplay.innerHTML = 'Баланс: ' + balances[selectedCurrency];
-            } else {
-                balanceDisplay.innerHTML = 'Баланс: 0.00';
-            }
-        }
-
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            updateBalance();
-        });
-
-        /*]]>*/
+        }, 60000); // Увеличено до 10 сек, чтобы не перегружать
     </script>
 </head>
 
@@ -68,9 +39,10 @@
         <b>ВЫЙТИ &cudarrr;</b>
     </button>
 </form>
+
 <table style="width:70%;margin-left:auto;margin-right:auto;">
     <tr><td style="padding:2px;">
-        <form method="post" th:action="${'/api/accounts/' + login + '/password'}">
+        <form method="post" th:action="${'/api/users/' + login + '/password'}">
             <table style="width:100%;margin-left:auto;margin-right:auto;border-radius:2%;padding:10px;background-color:whitesmoke;">
                 <tr>
                     <td style="font-weight:bold;">Логин</td>
@@ -96,19 +68,21 @@
             </table>
         </form>
     </td></tr>
+
     <tr><td style="padding:2px;">
-        <form method="post" th:action="${'/api/accounts/' + login + '/profile'}">
+        <form method="post" th:action="${'/api/users/' + login + '/profile'}">
             <table style="width:100%;margin-left:auto;margin-right:auto;border-radius:2%;padding:10px;background-color:whitesmoke;">
-                <tr th:if="${userAccountsErrors != null}">
-                    <td style="color:red;" colspan="3"
-                        th:each="userAccountsError : ${userAccountsErrors}"
-                        th:text="${userAccountsError}"></td>
+                <tr th:if="${userAccountsErrors != null}" th:each="userAccountsError : ${userAccountsErrors}">
+                    <td style="color:red;" colspan="3" th:text="${userAccountsError}"></td>
                 </tr>
                 <tr>
                     <td style="font-weight:bold;">Фамилия Имя</td>
                     <td th:text="${name} ?: 'Не указано'"></td>
                     <td>
-                        <input name="name" type="text" style="width:100%" th:value="${name}"/>
+                        <div style="display: flex; gap: 5px;">
+                            <input name="lastName" type="text" placeholder="Фамилия" style="width:50%" th:value="${lastName} ?: ''"/>
+                            <input name="firstName" type="text" placeholder="Имя" style="width:50%" th:value="${firstName} ?: ''"/>
+                        </div>
                     </td>
                 </tr>
                 <tr>
@@ -118,10 +92,10 @@
                         <input name="birthdate" type="date" style="width:100%" th:value="${birthdate}"/>
                     </td>
                 </tr>
+
                 <th:block th:if="${not #lists.isEmpty(accounts)}">
                     <tr th:each="account : ${accounts}" th:if="${account != null and account.currency != null}">
-                        <td style="font-weight:bold;">
-                            <span th:text="${account.currency} ?: 'Валюта'"></span>                        </td>
+                        <td style="font-weight:bold;" th:text="${account.currency} ?: 'Валюта'">Валюта</td>
                         <td th:text="'$' + (${account.balance} ?: '0.00') + ' ' + (${account.currency} ?: '')"></td>
                         <td style="text-align:right">
                             <input name="account" type="checkbox"
@@ -135,6 +109,7 @@
                         Счета не найдены
                     </td>
                 </tr>
+
                 <tr>
                     <td style="text-align:right" colspan="3">
                         <button>Сохранить изменения</button>
@@ -143,32 +118,22 @@
             </table>
         </form>
     </td></tr>
+
     <tr><td style="padding:2px;">
         <form method="post" th:action="${'/user/' + login + '/cash'}">
             <table style="width:100%;margin-left:auto;margin-right:auto;border-radius:2%;padding:10px;background-color:whitesmoke;">
-                <tr th:if="${cashErrors != null}">
-                    <td style="color:red;" colspan="4"
-                        th:each="cashError : ${cashErrors}"
-                        th:text="${cashError}"></td>
+                <tr th:if="${cashErrors != null}" th:each="cashError : ${cashErrors}">
+                    <td style="color:red;" colspan="4" th:text="${cashError}"></td>
                 </tr>
                 <tr>
                     <td style="font-weight:bold;">Наличные</td>
                     <td>
                         Валюта
-                        <select name="currency" id="currencySelect" onchange="updateBalance()">
-                            <th:block th:if="${not #lists.isEmpty(currency)}">
-                                <option th:each="eachCurrency : ${currency}"
-                                        th:value="${eachCurrency.name()}"
-                                        th:text="${eachCurrency.getTitle()} ?: eachCurrency.name()"></option>
-                            </th:block>
-                            <th:block th:if="${#lists.isEmpty(currency)}">
-                                <option value="">Нет валют</option>
-                            </th:block>
+                        <select name="currency">
+                            <option th:each="eachCurrency : ${currency}"
+                                    th:value="${eachCurrency.name()}"
+                                    th:text="${eachCurrency.getTitle() ?: eachCurrency.name()}"></option>
                         </select>
-                        <br/>
-                        <span id="balanceDisplay" style="font-size:12px; color:green;">
-                            Баланс: 0.00
-                        </span>
                     </td>
                     <td>
                         <input name="value" type="number" style="width:100%" required min="0.01" step="0.01"/>
@@ -181,34 +146,29 @@
             </table>
         </form>
     </td></tr>
+
     <tr><td style="padding:2px;">
         <form method="post" th:action="${'/user/' + login + '/transfer'}">
             <table style="width:100%;margin-left:auto;margin-right:auto;border-radius:2%;padding:10px;background-color:whitesmoke;">
-                <tr th:if="${transferErrors != null}">
-                    <td style="color:red;" colspan="5"
-                        th:each="transferError : ${transferErrors}"
-                        th:text="${transferError}"></td>
+                <tr th:if="${transferErrors != null}" th:each="transferError : ${transferErrors}">
+                    <td style="color:red;" colspan="5" th:text="${transferError}"></td>
                 </tr>
                 <tr>
                     <td style="font-weight:bold;">Перевод себе</td>
                     <td>
                         Со счета
                         <select name="from_currency">
-                            <th:block th:if="${not #lists.isEmpty(currency)}">
-                                <option th:each="eachCurrency : ${currency}"
-                                        th:value="${eachCurrency.name()}"
-                                        th:text="${eachCurrency.getTitle()} ?: eachCurrency.name()"></option>
-                            </th:block>
+                            <option th:each="eachCurrency : ${currency}"
+                                    th:value="${eachCurrency.name()}"
+                                    th:text="${eachCurrency.getTitle() ?: eachCurrency.name()}"></option>
                         </select>
                     </td>
                     <td>
                         На счет
                         <select name="to_currency">
-                            <th:block th:if="${not #lists.isEmpty(currency)}">
-                                <option th:each="eachCurrency : ${currency}"
-                                        th:value="${eachCurrency.name()}"
-                                        th:text="${eachCurrency.getTitle()} ?: eachCurrency.name()"></option>
-                            </th:block>
+                            <option th:each="eachCurrency : ${currency}"
+                                    th:value="${eachCurrency.name()}"
+                                    th:text="${eachCurrency.getTitle() ?: eachCurrency.name()}"></option>
                         </select>
                     </td>
                     <td>
@@ -222,34 +182,29 @@
             </table>
         </form>
     </td></tr>
+
     <tr><td style="padding:2px;">
         <form method="post" th:action="${'/user/' + login + '/transfer'}">
             <table style="width:100%;margin-left:auto;margin-right:auto;border-radius:2%;padding:10px;background-color:whitesmoke;">
-                <tr th:if="${transferOtherErrors != null}">
-                    <td style="color:red;" colspan="6"
-                        th:each="transferOtherError : ${transferOtherErrors}"
-                        th:text="${transferOtherError}"></td>
+                <tr th:if="${transferOtherErrors != null}" th:each="transferOtherError : ${transferOtherErrors}">
+                    <td style="color:red;" colspan="6" th:text="${transferOtherError}"></td>
                 </tr>
                 <tr>
                     <td style="font-weight:bold;">Перевод другому</td>
                     <td>
                         Со счета
                         <select name="from_currency">
-                            <th:block th:if="${not #lists.isEmpty(currency)}">
-                                <option th:each="eachCurrency : ${currency}"
-                                        th:value="${eachCurrency.name()}"
-                                        th:text="${eachCurrency.getTitle()} ?: eachCurrency.name()"></option>
-                            </th:block>
+                            <option th:each="eachCurrency : ${currency}"
+                                    th:value="${eachCurrency.name()}"
+                                    th:text="${eachCurrency.getTitle() ?: eachCurrency.name()}"></option>
                         </select>
                     </td>
                     <td>
                         На счет
                         <select name="to_currency">
-                            <th:block th:if="${not #lists.isEmpty(currency)}">
-                                <option th:each="eachCurrency : ${currency}"
-                                        th:value="${eachCurrency.name()}"
-                                        th:text="${eachCurrency.getTitle()} ?: eachCurrency.name()"></option>
-                            </th:block>
+                            <option th:each="eachCurrency : ${currency}"
+                                    th:value="${eachCurrency.name()}"
+                                    th:text="${eachCurrency.getTitle() ?: eachCurrency.name()}"></option>
                         </select>
                     </td>
                     <td>
@@ -275,6 +230,7 @@
             </table>
         </form>
     </td></tr>
+
     <tr><td style="padding:2px;" id="exchange_rates">
         Загрузка курсов валют...
     </td></tr>

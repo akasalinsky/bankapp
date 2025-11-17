@@ -13,7 +13,7 @@
                 <span style="color:red;font-weight:bold;">*</span> Все поля обязательны для заполнения
             </td>
         </tr>
-        <tr th:each="error : ${errors}">
+        <tr th:if="${error}">
             <td style="color:red;" th:text="${error}" colspan="2"/>
         </tr>
         <tr>

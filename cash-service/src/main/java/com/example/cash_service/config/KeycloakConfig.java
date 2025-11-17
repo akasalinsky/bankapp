@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 public class KeycloakConfig {
 
     // ИСПРАВЛЕНО: Правильный URL Keycloak (порт 8085!)
-    @Value("${keycloak.url:http://localhost:8085}")
+    @Value("${keycloak.url:http://keycloak:8080}")
     private String keycloakUrl;
 
     // ИСПРАВЛЕНО: Правильный Realm

@@ -1,29 +1,196 @@
 services:
+  postgres:
+    image: postgres:15
+    container_name: postgres-bank
+    environment:
+      POSTGRES_DB: accounts_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bank-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   keycloak:
-    image: quay.io/keycloak/keycloak:21.1.1
-    container_name: bank-keycloak
+    image: quay.io/keycloak/keycloak:26.4.0
+    container_name: keycloak
     ports:
       - "8085:8080"
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: dev-file
-    command:
-      - start-dev
-    volumes:
-      - keycloak_data:/opt/keycloak/data
-  postgres:
-    image: postgres:13
-    container_name: bank-postgres
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/accounts_db
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: password
+    command: start-dev
+    depends_on:
+      - postgres
+    networks:
+      - bank-network
+
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    hostname: eureka-server
     ports:
-      - "5432:5432"
+      - "8761:8761"
     environment:
-      POSTGRES_DB: accounts_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      - SPRING_PROFILES_ACTIVE=docker
+     # - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+    depends_on:
+      - postgres
+    networks:
+      - bank-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8761/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    hostname: gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+    depends_on:
+      - eureka-server
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - bank-network
+
+  config-server:
+    build: ./config-server
+    container_name: config-server
+    hostname: config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=native
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - C:/education/bankapp/bank-config-repo:/config-repo
+    networks:
+      - bank-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://config-server:8888/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  accounts-service:
+    build: ./accounts-service
+    container_name: accounts-service
+    hostname: accounts-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      config-server: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для config-server
+      eureka-server: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для eureka-server (ждём запуск, не готовность)
+      postgres: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для postgres
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - bank-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  cash-service:
+    build: ./cash-service
+    container_name: cash-service
+    hostname: cash-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+    depends_on:
+      config-server: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для config-server
+      eureka-server: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для eureka-server (ждём запуск, не готовность)
+      postgres: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для postgres
+    networks:
+      - bank-network
+
+  transfer-service:
+    build: ./transfer-service
+    container_name: transfer-service
+    hostname: transfer-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+    depends_on:
+      config-server: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для config-server
+      eureka-server: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для eureka-server (ждём запуск, не готовность)
+      postgres: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для postgres
+    networks:
+      - bank-network
+
+  notification-service:
+    build: ./notification-service
+    container_name: notification-service
+    hostname: notification-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+    depends_on:
+      config-server: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для config-server
+      eureka-server: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для eureka-server (ждём запуск, не готовность)
+      postgres: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для postgres
+    networks:
+      - bank-network
+
+  front-ui:
+    build: ./front-ui
+    container_name: front-ui
+    hostname: front-ui
+    ports:
+      - "8088:8088"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+    #extra_hosts:
+     # - "host.docker.internal:host-gateway"
+    depends_on:
+      config-server: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для config-server
+      eureka-server: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для eureka-server (ждём запуск, не готовность)
+      postgres: # <-- Имя сервиса
+        condition: service_healthy # <-- Условие для postgres
+    networks:
+      - bank-network
 
 volumes:
-  keycloak_data:
   postgres_data:
+
+networks:
+  bank-network:
+    driver: bridge

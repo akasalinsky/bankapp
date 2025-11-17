@@ -11,8 +11,8 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "login", nullable = false)  // Заменили accountId на login
-    private String login;
+    @Column(name = "keycloak_id", nullable = false)
+    private String keycloakId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
@@ -27,11 +27,14 @@ public class Notification {
     @Column(name = "is_sent", nullable = false)
     private boolean isSent = false;
 
+    @Column(name = "user_login")
+    private String userLogin;
+
     // Constructors
     public Notification() {}
 
-    public Notification(String login, NotificationType type, String message) {
-        this.login = login;
+    public Notification(String login, String userLogin, NotificationType type, String message) {
+        this.keycloakId = keycloakId;
         this.type = type;
         this.message = message;
         this.timestamp = LocalDateTime.now();
@@ -41,8 +44,11 @@ public class Notification {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public String getLogin() { return login; }  // Заменили getAccountId на getLogin
-    public void setLogin(String login) { this.login = login; }  // Заменили setAccountId на setLogin
+    public String getLogin() { return keycloakId; }  // Заменили getAccountId на getLogin
+    public void setLogin(String login) { this.keycloakId = login; }  // Заменили setAccountId на setLogin
+
+    public String getUserLogin() { return userLogin; }
+    public void setUserLogin(String userLogin) { this.userLogin = userLogin; }
 
     public NotificationType getType() { return type; }
     public void setType(NotificationType type) { this.type = type; }

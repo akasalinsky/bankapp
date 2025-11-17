@@ -8,8 +8,9 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class RestTemplateConfig {
 
-    @LoadBalanced  // Для Service Discovery через Eureka
+    //@LoadBalanced  // Для Service Discovery через Eureka
     @Bean
+    //@LoadBalanced
     public RestTemplate restTemplate() {
         return new RestTemplate();
     }

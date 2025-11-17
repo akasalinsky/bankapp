@@ -28,11 +28,11 @@ public class CashController {
             Authentication authentication
             ) {
 
-        // ИЗВЛЕКАЕМ ТОКЕН ДЛЯ ДАЛЬНЕЙШЕЙ ПЕРЕДАЧИ
         String jwtToken = null;
         if (authentication instanceof JwtAuthenticationToken) {
             Jwt jwt = ((JwtAuthenticationToken) authentication).getToken();
             jwtToken = jwt.getTokenValue();
+            System.out.println("jwtToken: " + jwtToken);
         }
 
         if (jwtToken == null) {
@@ -41,11 +41,9 @@ public class CashController {
 
         try {
             if ("PUT".equals(request.getOperationType())) {
-
                 cashService.deposit(login, request, jwtToken);
                 return ResponseEntity.ok().build();
             } else if ("GET".equals(request.getOperationType())) {
-                // Снять наличные
                 cashService.withdraw(login, request, jwtToken);
                 return ResponseEntity.ok().build();
             } else {
@@ -58,13 +56,11 @@ public class CashController {
 
     @PostMapping("/deposit")
     public ResponseEntity<?> deposit(@RequestBody CashRequest request){
-
         return ResponseEntity.ok(request);
-
     }
+
     @PostMapping("/withdraw")
     public ResponseEntity<?> withdraw(@RequestBody CashRequest request) {
-
         return ResponseEntity.ok(request);
     }
 

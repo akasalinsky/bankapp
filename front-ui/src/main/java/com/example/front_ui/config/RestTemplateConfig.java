@@ -8,14 +8,15 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class RestTemplateConfig {
 
-    @LoadBalanced
+    //@LoadBalanced
     @Bean
+    @LoadBalanced
     public RestTemplate restTemplate() {
         return new RestTemplate();
     }
 
     @Bean
-    @LoadBalanced  // для вызовов других микросервисов через Eureka
+    //@LoadBalanced  // для вызовов других микросервисов через Eureka
     public RestTemplate loadBalancedRestTemplate() {
         return new RestTemplate();
     }

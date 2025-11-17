@@ -19,8 +19,7 @@ import java.util.Map;
 @Service
 public class CashService {
     private final RestTemplate restTemplate;
-    private final String accountsServiceUrl = "http://accounts-service";
-    private final String notificationServiceUrl = "http://notification-service";
+    private final String gatewayUrl = "http://gateway";
     private final KeycloakAuthService authService;
 
     public CashService(RestTemplate restTemplate, KeycloakAuthService authService) {
@@ -36,10 +35,10 @@ public class CashService {
 
         try {
             HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(jwtToken); // ← РАСКОММЕНТИРУЙТЕ ЭТУ СТРОКУ
+            headers.setBearerAuth(jwtToken);
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            URI depositUrl = UriComponentsBuilder.fromHttpUrl(accountsServiceUrl)
+            URI depositUrl = UriComponentsBuilder.fromHttpUrl(gatewayUrl)
                     .path("/api/accounts/{login}/deposit")
                     .queryParam("amount", request.getAmount())
                     .queryParam("currency", request.getCurrency())
@@ -54,6 +53,7 @@ public class CashService {
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 System.out.println("✅ Успешное пополнение счета");
+                sendNotification(login, "DEPOSIT", "Счет пополнен на " + request.getAmount() + " " + request.getCurrency());
             } else {
                 System.out.println("❌ Ошибка при пополнении: " + response.getStatusCode() + " - " + response.getBody());
                 throw new RuntimeException("Accounts service returned error: " + response.getStatusCode() + " - " + response.getBody());
@@ -77,7 +77,7 @@ public class CashService {
             headers.setBearerAuth(jwtToken);
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            URI depositUrl = UriComponentsBuilder.fromHttpUrl(accountsServiceUrl)
+            URI depositUrl = UriComponentsBuilder.fromHttpUrl(gatewayUrl)
                     .path("/api/accounts/{login}/withdraw")
                     .queryParam("amount", request.getAmount())
                     .queryParam("currency", request.getCurrency())
@@ -92,6 +92,7 @@ public class CashService {
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 System.out.println("✅ Успешное снятие со счета");
+                sendNotification(login, "WITHDRAW", "Со счета снято " + request.getAmount() + " " + request.getCurrency());
             } else {
                 System.out.println("❌ Ошибка при снятии: " + response.getStatusCode() + " - " + response.getBody());
                 throw new RuntimeException("Accounts service returned error: " + response.getStatusCode() + " - " + response.getBody());
@@ -121,7 +122,7 @@ public class CashService {
 
     private void sendNotification(String login, String type, String message) {
         try {
-            URI notificationUrl = UriComponentsBuilder.fromHttpUrl(notificationServiceUrl)
+            URI notificationUrl = UriComponentsBuilder.fromHttpUrl(gatewayUrl)
                     .path("/api/notifications")
                     .queryParam("login", login)
                     .queryParam("type", type)
@@ -137,4 +138,6 @@ public class CashService {
             System.out.println("❌ Cash Service → Notification Service failed: " + e.getMessage());
         }
     }
+
+
 }

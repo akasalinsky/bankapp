@@ -26,6 +26,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,9 +48,6 @@ public class MainController {
     private OAuth2AuthorizedClientService authorizedClientService;
 
     private final String gatewayUrl = "http://gateway";
-    private final String accountsServiceUrl = "http://accounts-service";
-    private final String cashServiceUrl = "http://cash-service";
-    private final String exchangeServiceUrl = "http://exchange-service";
 
     @GetMapping("/")
     public String mainPage(Model model, Authentication authentication) {
@@ -68,14 +66,10 @@ public class MainController {
                 model.addAttribute("login", "Неавторизованный пользователь");
                 return "main";
             }
-
                 String[] parts = jwtToken.split("\\.");
-
                 String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
-
                 ObjectMapper mapper = new ObjectMapper();
                 Map<String, Object> claims = mapper.readValue(payload, Map.class);
-
                 String preferredUsername = (String) claims.get("preferred_username");
                 if (preferredUsername != null) {
                     login = preferredUsername;
@@ -85,8 +79,6 @@ public class MainController {
                 String lastName = (String) claims.get("family_name");
                 String birthDate = (String) claims.get("birthdate");
                 String name = lastName + " " + firstName;
-
-                System.out.println("firstName " + firstName + "lastName " + lastName + "birthDate " + birthDate);
 
                 if (name != null) {
                     model.addAttribute("name", name);
@@ -100,7 +92,6 @@ public class MainController {
                 if (birthDate != null) {
                     model.addAttribute("birthdate", birthDate);
                 }
-                System.out.println("Profile data loaded from JWT successfully.");
 
                 model.addAttribute("login", login);
 
@@ -108,20 +99,8 @@ public class MainController {
                 headers.setBearerAuth(jwtToken);
                 HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            /*try {
-                // Получаем курсы валют из Exchange Service
-                String exchangeUrl = exchangeServiceUrl + "/api/exchange/rates";
-                List<ExchangeRate> rates = restTemplate.getForObject(exchangeUrl, List.class);
-                model.addAttribute("exchangeRates", rates);
-
-            } catch (Exception e) {
-                model.addAttribute("exchangeRates", java.util.List.of());
-            }*/
-
                 try {
-                    String accountsUrl = accountsServiceUrl + "/api/accounts/" + login + "/accounts";
-                    System.out.println("Fetching accounts from: " + accountsUrl);
-
+                    String accountsUrl = gatewayUrl + "/api/accounts/" + login + "/accounts";
                     ResponseEntity<List> accountsResponse = restTemplate.exchange(
                             accountsUrl, HttpMethod.GET, entity, List.class
                     );
@@ -165,10 +144,13 @@ public class MainController {
             return "main";
     }
 
+    @GetMapping("/login")
+    public String loginPage() {
+        return "login";
+    }
+
     private String getJwtToken(Authentication authentication) {
         try {
-            System.out.println("Authentication type: " + authentication.getClass().getName());
-            System.out.println("Authentication details: " + authentication.getDetails());
             if (authentication instanceof OAuth2AuthenticationToken) {
                 OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
 
@@ -197,7 +179,7 @@ public class MainController {
             @RequestParam BigDecimal value,
             @RequestParam String action,
             Authentication authentication,
-            RedirectAttributes redirectAttributes) {  // Используйте RedirectAttributes
+            RedirectAttributes redirectAttributes) {
 
         try {
             System.out.println("Обрабатываем операцию для пользователя: " + login);
@@ -208,21 +190,19 @@ public class MainController {
                 return "redirect:/";
             }
 
-            // Создаем CashRequest
             CashRequestDTO cashRequest = new CashRequestDTO(login, value, currency, action);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(jwtToken);
 
-            String cashUrl = cashServiceUrl + "/api/cash/user/" + login + "/operations";
+            String cashUrl = gatewayUrl + "/api/cash/user/" + login + "/operations";
 
             HttpEntity<CashRequestDTO> entity = new HttpEntity<>(cashRequest, headers);
 
-            // 4. Используем restTemplate.exchange для отправки POST-запроса с телом
             restTemplate.exchange(
-                    cashUrl, // URL без параметров запроса
+                    cashUrl,
                     HttpMethod.POST,
-                    entity, // Передаем HttpEntity с объектом CashRequestDTO
+                    entity,
                     String.class
             );
 
@@ -247,15 +227,39 @@ public class MainController {
             @RequestParam String lastName,
             @RequestParam String birthdate,
             Model model,
-            HttpServletRequest request) {
+            RedirectAttributes redirectAttributes) {
 
         try {
+
             if (!password.equals(confirm_password)) {
-                model.addAttribute("error", "Пароли не совпадают");
-                return "signup";
+                redirectAttributes.addFlashAttribute("error", "Пароли не совпадают");
+                return "redirect:/signup";
+            }
+            if (birthdate == null || birthdate.trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("error", "Дата рождения обязательна для заполнения");
+                return "redirect:/signup";
             }
 
-            String registerUrl = UriComponentsBuilder.fromUriString(accountsServiceUrl)
+            LocalDate birthDate;
+            try {
+                birthDate = LocalDate.parse(birthdate);
+            } catch (DateTimeParseException e) {
+                redirectAttributes.addFlashAttribute("error", "Неверный формат даты рождения. Используйте формат ГГГГ-ММ-ДД");
+                return "redirect:/signup";
+            }
+
+            if (birthDate.isAfter(LocalDate.now())) {
+                redirectAttributes.addFlashAttribute("error", "Дата рождения не может быть в будущем");
+                return "redirect:/signup";
+            }
+
+            LocalDate eighteenYearsAgo = LocalDate.now().minusYears(18);
+            if (birthDate.isAfter(eighteenYearsAgo)) {
+                redirectAttributes.addFlashAttribute("error", "Регистрация возможна только для лиц старше 18 лет");
+                return "redirect:/signup";
+            }
+
+            String registerUrl = UriComponentsBuilder.fromUriString(gatewayUrl)
                     .path("/api/users/register")
                     .queryParam("login", login)
                     .queryParam("password", password)
@@ -269,8 +273,8 @@ public class MainController {
             return "redirect:/login";
 
         } catch (Exception e) {
-            model.addAttribute("error", "Ошибка регистрации: " + e.getMessage());
-            return "signup";
+            redirectAttributes.addFlashAttribute("error", "Ошибка регистрации: " + e.getMessage());
+            return "redirect:/signup";
         }
     }
 
@@ -292,20 +296,18 @@ public class MainController {
                 return "redirect:/";
             }
 
-            // 3. Создаем заголовки с токеном
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(jwtToken);
 
-            String changePasswordUrl = accountsServiceUrl + "/api/users/" + login + "/password?";
+            String changePasswordUrl = gatewayUrl + "/api/users/" + login + "/password?";
 
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(changePasswordUrl)
                     .queryParam("password", password)
                     .queryParam("confirm_password", confirm_password);
 
-            // 5. Создаем HttpEntity (тело пустое, т.к. параметры в URL)
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            restTemplate.exchange( // <-- 5. Использует .exchange()
+            restTemplate.exchange(
                     builder.toUriString(),
                     HttpMethod.POST,
                     entity,
@@ -336,7 +338,7 @@ public class MainController {
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(jwtToken);
 
-            String updateProfileUrl = accountsServiceUrl + "/api/users/" + login + "/profile?";
+            String updateProfileUrl = gatewayUrl + "/api/users/" + login + "/profile?";
 
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(updateProfileUrl)
                     .queryParam("firstName", firstName)
@@ -362,10 +364,9 @@ public class MainController {
     @PostMapping("/user/{login}/transfer")
     public String handleTransfer(
             @PathVariable String login,
-            @RequestParam("from_currency") String fromCurrency,
-            @RequestParam("to_currency") String toCurrency,
+            @RequestParam("from_currency") String fromCurrency, // Имя из формы
             @RequestParam("value") BigDecimal value,
-            @RequestParam("to_login") String toLogin,
+            @RequestParam("to_login") String toLogin, // Добавили параметр для логина получателя
             Authentication authentication,
             RedirectAttributes redirectAttributes) {
 
@@ -374,14 +375,7 @@ public class MainController {
             redirectAttributes.addFlashAttribute("transferErrors", List.of("Ошибка аутентификации, токен не найден"));
             return "redirect:/";
         }
-
-        // Внутренний перевод
-        if (login.equals(toLogin)) {
-            return transferToSelf(login, fromCurrency, toCurrency, value, jwtToken, redirectAttributes);
-        } else {
-            // Перевод другому
-            return transferToOther(login, toLogin, fromCurrency, toCurrency, value, jwtToken, redirectAttributes);
-        }
+        return transferToOther(login, toLogin, fromCurrency, value, jwtToken, redirectAttributes);
     }
 
     private HttpHeaders createHeaders(String jwtToken) {
@@ -395,7 +389,6 @@ public class MainController {
             HttpHeaders headers = createHeaders(jwtToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // Тело запроса для перевода себе
             Map<String, Object> transferRequest = Map.of(
                     "fromLogin", login,
                     "toLogin", login,
@@ -407,7 +400,7 @@ public class MainController {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(transferRequest, headers);
 
             restTemplate.exchange(
-                    accountsServiceUrl + "/api/accounts/transfer/self",
+                    gatewayUrl + "/api/accounts/transfer/self",
                     HttpMethod.POST,
                     entity,
                     String.class
@@ -425,38 +418,37 @@ public class MainController {
         }
     }
 
-    private String transferToOther(String fromLogin, String toLogin, String fromCurrency, String toCurrency, BigDecimal value, String jwtToken, RedirectAttributes redirectAttributes) {
+    private String transferToOther(String fromLogin, String toLogin, String fromCurrency, BigDecimal value, String jwtToken, RedirectAttributes redirectAttributes) {
         try {
             HttpHeaders headers = createHeaders(jwtToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // Тело запроса для перевода другому
             Map<String, Object> transferRequest = Map.of(
-                    "fromKeycloakId", fromLogin,
-                    "toKeycloakId", toLogin,
-                    "fromCurrency", fromCurrency,
-                    "toCurrency", toCurrency,
+                    "fromLogin", fromLogin, // Логин отправителя
+                    "toLogin", toLogin,     // Логин получателя
+                    "fromCurrency", fromCurrency, // Валюта отправителя
+                    "toCurrency", fromCurrency, // Так как конвертации нет, валюта получателя та же
                     "amount", value
             );
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(transferRequest, headers);
 
             restTemplate.exchange(
-                    accountsServiceUrl + "/api/accounts/transfer/other", // Эндпоинт для перевода другому
+                    gatewayUrl + "/api/accounts/transfer/other", // Эндпоинт для перевода другому
                     HttpMethod.POST,
                     entity,
                     String.class
             );
 
-            redirectAttributes.addFlashAttribute("transferOtherSuccess", List.of("Перевод другому пользователю выполнен успешно."));
+            redirectAttributes.addFlashAttribute("transferOtherSuccess", List.of("Перевод пользователю **" + toLogin + "** на сумму " + value.toPlainString() + " **" + fromCurrency + "** выполнен успешно."));
             return "redirect:/";
 
         } catch (HttpClientErrorException e) {
-            redirectAttributes.addFlashAttribute("transferOtherErrors", List.of("Ошибка перевода другому: " + e.getResponseBodyAsString()));
-            return "redirect:/";
+            redirectAttributes.addFlashAttribute("transferOtherErrors", List.of("Ошибка перевода: " + (e.getResponseBodyAsString().isEmpty() ? e.getMessage() : e.getResponseBodyAsString())));
+            return "redirect:/user/" + fromLogin; // Лучше редирект обратно на страницу пользователя
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("transferOtherErrors", List.of("Непредвиденная ошибка: " + e.getMessage()));
-            return "redirect:/";
+            return "redirect:/user/" + fromLogin;
         }
     }
 
@@ -466,7 +458,7 @@ public class MainController {
             headers.setBearerAuth(jwtToken);
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            String accountsUrl = accountsServiceUrl + "/api/accounts/" + login;
+            String accountsUrl = gatewayUrl + "/api/accounts/" + login;
             ResponseEntity<String> response = restTemplate.exchange(
                     accountsUrl,
                     HttpMethod.GET,
@@ -481,36 +473,6 @@ public class MainController {
             System.out.println("Response body: " + e.getResponseBodyAsString());
         } catch (Exception e) {
             System.out.println("Failed to call Accounts Service: " + e.getMessage());
-        }
-    }
-    @GetMapping("/api/exchange/rates")
-    public ResponseEntity<List<ExchangeRate>> getExchangeRates(
-            Authentication authentication) {
-
-        if (authentication == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        try {
-            // Получаем JWT токен (если нужно для авторизации в Exchange Service)
-            String jwtToken = getJwtToken(authentication);
-
-            HttpHeaders headers = new HttpHeaders();
-            if (jwtToken != null) {
-                headers.setBearerAuth(jwtToken);
-            }
-
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-
-            // Вызываем Exchange Service через Gateway
-            String exchangeUrl = exchangeServiceUrl + "/api/exchange/rates";
-            ResponseEntity<List> response = restTemplate.exchange(
-                    exchangeUrl, HttpMethod.GET, entity, List.class);
-
-            return ResponseEntity.ok(response.getBody());
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

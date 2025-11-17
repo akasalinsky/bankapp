@@ -8,7 +8,8 @@ import org.springframework.web.client.RestTemplate;
 public class TransferService {
 
     private final RestTemplate restTemplate;
-    private final String accountsServiceUrl = "http://accounts-service";  // Через Service Discovery
+    private final String gatewayUrl = "http://gateway";
+
 
     public TransferService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
@@ -18,15 +19,14 @@ public class TransferService {
         validateRequest(request);
 
         try {
-            // Снятие с первого счета
-            String withdrawUrl = accountsServiceUrl + "/api/accounts/" +
+            String withdrawUrl = gatewayUrl + "/api/accounts/" +
                     request.getFromAccountId() + "/withdraw?amount=" +
                     request.getAmount() + "&currency=" + request.getCurrency();
 
             restTemplate.postForObject(withdrawUrl, null, Void.class);
 
             // Пополнение второго счета
-            String depositUrl = accountsServiceUrl + "/api/accounts/" +
+            String depositUrl = gatewayUrl + "/api/accounts/" +
                     request.getToAccountId() + "/deposit?amount=" +
                     request.getAmount() + "&currency=" + request.getCurrency();
 
@@ -40,7 +40,6 @@ public class TransferService {
     }
 
     public void externalTransfer(TransferRequest request) {
-        // Пока используем ту же логику
         internalTransfer(request);
     }
 
@@ -62,15 +61,13 @@ public class TransferService {
 
     private void rollbackTransfer(TransferRequest request) {
         try {
-            // Откатываем пополнение (если было)
-            String rollbackDepositUrl = accountsServiceUrl + "/api/accounts/" +
+            String rollbackDepositUrl = gatewayUrl + "/api/accounts/" +
                     request.getToAccountId() + "/withdraw?amount=" +
                     request.getAmount() + "&currency=" + request.getCurrency();
 
             restTemplate.postForObject(rollbackDepositUrl, null, Void.class);
 
         } catch (Exception rollbackException) {
-            // Логируем ошибку отката
             System.err.println("Rollback failed: " + rollbackException.getMessage());
         }
     }
