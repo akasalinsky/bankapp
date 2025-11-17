@@ -48,9 +48,6 @@ public class MainController {
     private OAuth2AuthorizedClientService authorizedClientService;
 
     private final String gatewayUrl = "http://gateway";
-    private final String accountsServiceUrl = "http://accounts-service";
-    private final String cashServiceUrl = "http://cash-service";
-    private final String exchangeServiceUrl = "http://exchange-service";
 
     @GetMapping("/")
     public String mainPage(Model model, Authentication authentication) {
@@ -69,14 +66,10 @@ public class MainController {
                 model.addAttribute("login", "Неавторизованный пользователь");
                 return "main";
             }
-
                 String[] parts = jwtToken.split("\\.");
-
                 String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
-
                 ObjectMapper mapper = new ObjectMapper();
                 Map<String, Object> claims = mapper.readValue(payload, Map.class);
-
                 String preferredUsername = (String) claims.get("preferred_username");
                 if (preferredUsername != null) {
                     login = preferredUsername;
@@ -86,8 +79,6 @@ public class MainController {
                 String lastName = (String) claims.get("family_name");
                 String birthDate = (String) claims.get("birthdate");
                 String name = lastName + " " + firstName;
-
-                System.out.println("firstName " + firstName + "lastName " + lastName + "birthDate " + birthDate);
 
                 if (name != null) {
                     model.addAttribute("name", name);
@@ -101,7 +92,6 @@ public class MainController {
                 if (birthDate != null) {
                     model.addAttribute("birthdate", birthDate);
                 }
-                System.out.println("Profile data loaded from JWT successfully.");
 
                 model.addAttribute("login", login);
 
@@ -110,9 +100,7 @@ public class MainController {
                 HttpEntity<String> entity = new HttpEntity<>(headers);
 
                 try {
-                    String accountsUrl = accountsServiceUrl + "/api/accounts/" + login + "/accounts";
-                    System.out.println("Fetching accounts from: " + accountsUrl);
-
+                    String accountsUrl = gatewayUrl + "/api/accounts/" + login + "/accounts";
                     ResponseEntity<List> accountsResponse = restTemplate.exchange(
                             accountsUrl, HttpMethod.GET, entity, List.class
                     );
@@ -163,8 +151,6 @@ public class MainController {
 
     private String getJwtToken(Authentication authentication) {
         try {
-            System.out.println("Authentication type: " + authentication.getClass().getName());
-            System.out.println("Authentication details: " + authentication.getDetails());
             if (authentication instanceof OAuth2AuthenticationToken) {
                 OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
 
@@ -193,7 +179,7 @@ public class MainController {
             @RequestParam BigDecimal value,
             @RequestParam String action,
             Authentication authentication,
-            RedirectAttributes redirectAttributes) {  // Используйте RedirectAttributes
+            RedirectAttributes redirectAttributes) {
 
         try {
             System.out.println("Обрабатываем операцию для пользователя: " + login);
@@ -204,21 +190,19 @@ public class MainController {
                 return "redirect:/";
             }
 
-            // Создаем CashRequest
             CashRequestDTO cashRequest = new CashRequestDTO(login, value, currency, action);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(jwtToken);
 
-            String cashUrl = cashServiceUrl + "/api/cash/user/" + login + "/operations";
+            String cashUrl = gatewayUrl + "/api/cash/user/" + login + "/operations";
 
             HttpEntity<CashRequestDTO> entity = new HttpEntity<>(cashRequest, headers);
 
-            // 4. Используем restTemplate.exchange для отправки POST-запроса с телом
             restTemplate.exchange(
-                    cashUrl, // URL без параметров запроса
+                    cashUrl,
                     HttpMethod.POST,
-                    entity, // Передаем HttpEntity с объектом CashRequestDTO
+                    entity,
                     String.class
             );
 
@@ -251,7 +235,6 @@ public class MainController {
                 redirectAttributes.addFlashAttribute("error", "Пароли не совпадают");
                 return "redirect:/signup";
             }
-            // Проверка даты рождения
             if (birthdate == null || birthdate.trim().isEmpty()) {
                 redirectAttributes.addFlashAttribute("error", "Дата рождения обязательна для заполнения");
                 return "redirect:/signup";
@@ -276,7 +259,7 @@ public class MainController {
                 return "redirect:/signup";
             }
 
-            String registerUrl = UriComponentsBuilder.fromUriString(accountsServiceUrl)
+            String registerUrl = UriComponentsBuilder.fromUriString(gatewayUrl)
                     .path("/api/users/register")
                     .queryParam("login", login)
                     .queryParam("password", password)
@@ -316,7 +299,7 @@ public class MainController {
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(jwtToken);
 
-            String changePasswordUrl = accountsServiceUrl + "/api/users/" + login + "/password?";
+            String changePasswordUrl = gatewayUrl + "/api/users/" + login + "/password?";
 
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(changePasswordUrl)
                     .queryParam("password", password)
@@ -355,7 +338,7 @@ public class MainController {
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(jwtToken);
 
-            String updateProfileUrl = accountsServiceUrl + "/api/users/" + login + "/profile?";
+            String updateProfileUrl = gatewayUrl + "/api/users/" + login + "/profile?";
 
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(updateProfileUrl)
                     .queryParam("firstName", firstName)
@@ -392,13 +375,6 @@ public class MainController {
             redirectAttributes.addFlashAttribute("transferErrors", List.of("Ошибка аутентификации, токен не найден"));
             return "redirect:/";
         }
-
-        // Передаем правильные параметры:
-        // 1. login - логин отправителя (из @PathVariable)
-        // 2. toLogin - логин получателя (из @RequestParam)
-        // 3. fromCurrency - валюта (из @RequestParam)
-        // 4. value - сумма (из @RequestParam)
-        // 5. jwtToken - токен
         return transferToOther(login, toLogin, fromCurrency, value, jwtToken, redirectAttributes);
     }
 
@@ -413,7 +389,6 @@ public class MainController {
             HttpHeaders headers = createHeaders(jwtToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // Тело запроса для перевода себе
             Map<String, Object> transferRequest = Map.of(
                     "fromLogin", login,
                     "toLogin", login,
@@ -425,7 +400,7 @@ public class MainController {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(transferRequest, headers);
 
             restTemplate.exchange(
-                    accountsServiceUrl + "/api/accounts/transfer/self",
+                    gatewayUrl + "/api/accounts/transfer/self",
                     HttpMethod.POST,
                     entity,
                     String.class
@@ -448,7 +423,6 @@ public class MainController {
             HttpHeaders headers = createHeaders(jwtToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            // Тело запроса для перевода другому
             Map<String, Object> transferRequest = Map.of(
                     "fromLogin", fromLogin, // Логин отправителя
                     "toLogin", toLogin,     // Логин получателя
@@ -460,7 +434,7 @@ public class MainController {
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(transferRequest, headers);
 
             restTemplate.exchange(
-                    accountsServiceUrl + "/api/accounts/transfer/other", // Эндпоинт для перевода другому
+                    gatewayUrl + "/api/accounts/transfer/other", // Эндпоинт для перевода другому
                     HttpMethod.POST,
                     entity,
                     String.class
@@ -470,7 +444,6 @@ public class MainController {
             return "redirect:/";
 
         } catch (HttpClientErrorException e) {
-            // Убедитесь, что e.getResponseBodyAsString() возвращает полезную информацию
             redirectAttributes.addFlashAttribute("transferOtherErrors", List.of("Ошибка перевода: " + (e.getResponseBodyAsString().isEmpty() ? e.getMessage() : e.getResponseBodyAsString())));
             return "redirect:/user/" + fromLogin; // Лучше редирект обратно на страницу пользователя
         } catch (Exception e) {
@@ -485,7 +458,7 @@ public class MainController {
             headers.setBearerAuth(jwtToken);
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            String accountsUrl = accountsServiceUrl + "/api/accounts/" + login;
+            String accountsUrl = gatewayUrl + "/api/accounts/" + login;
             ResponseEntity<String> response = restTemplate.exchange(
                     accountsUrl,
                     HttpMethod.GET,
@@ -500,36 +473,6 @@ public class MainController {
             System.out.println("Response body: " + e.getResponseBodyAsString());
         } catch (Exception e) {
             System.out.println("Failed to call Accounts Service: " + e.getMessage());
-        }
-    }
-    @GetMapping("/api/exchange/rates")
-    public ResponseEntity<List<ExchangeRate>> getExchangeRates(
-            Authentication authentication) {
-
-        if (authentication == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        try {
-            // Получаем JWT токен (если нужно для авторизации в Exchange Service)
-            String jwtToken = getJwtToken(authentication);
-
-            HttpHeaders headers = new HttpHeaders();
-            if (jwtToken != null) {
-                headers.setBearerAuth(jwtToken);
-            }
-
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-
-            // Вызываем Exchange Service через Gateway
-            String exchangeUrl = exchangeServiceUrl + "/api/exchange/rates";
-            ResponseEntity<List> response = restTemplate.exchange(
-                    exchangeUrl, HttpMethod.GET, entity, List.class);
-
-            return ResponseEntity.ok(response.getBody());
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

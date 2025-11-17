@@ -4,7 +4,51 @@ server:
 spring:
   application:
     name: accounts-service
+  datasource:
+    url: jdbc:postgresql://postgres:5432/accounts_db
+    username: postgres
+    password: password
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8085/realms/bank-realm
+          jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+
+keycloak:
+  token-url: http://host.docker.internal:8085/realms/bank-realm/protocol/openid-connect/token
+  client-id: bank-client
+  client-secret: SYQCzp4wl8miMrJCluB7o4dLfWmCNfpz
+
+
+# Блок Eureka (с исправлением FQDN)
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+  instance:
+    hostname: accounts-service
+    #ip-address: 127.0.0.1
+    #prefer-ip-address: true
+    # Ваш рабочий фикс для принудительного использования localhost
+    #instance-id: ${spring.application.name}:${server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
 
 logging:
   level:
-    com.practicum.bank.account-service: DEBUG
+    com.practicum.bank.accounts: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+
+

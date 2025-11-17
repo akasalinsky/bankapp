@@ -19,30 +19,30 @@ public class NotificationController {
     }
 
     @PostMapping
-    public ResponseEntity<?> sendNotification(
-            @RequestParam String login,  // Заменили accountId на login
+    public ResponseEntity<?> sendNotificationWithKeycloak(
+            @RequestParam String keycloakId,
+            @RequestParam String userLogin,
             @RequestParam NotificationType type,
             @RequestParam String message) {
 
         try {
-            notificationService.sendNotification(login, type, message);
+            notificationService.sendNotification(keycloakId, userLogin, type, message);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    @GetMapping("/{login}")
-    public ResponseEntity<List<Notification>> getNotificationsByLogin(
-            @PathVariable String login) {  // Заменили accountId на login
+    @GetMapping("/keycloak/{keycloakId}")
+    public ResponseEntity<List<Notification>> getNotificationsByKeycloakId(
+            @PathVariable String keycloakId) {
 
         try {
-            List<Notification> notifications = notificationService.getNotificationsByLogin(login);
+            List<Notification> notifications = notificationService.getNotificationsByKeycloakId(keycloakId);
             return ResponseEntity.ok(notifications);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
-    // Убираем email/sms методы - они не нужны по минимальным требованиям
 }

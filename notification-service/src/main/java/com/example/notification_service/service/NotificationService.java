@@ -20,30 +20,25 @@ public class NotificationService {
         this.notificationRepository = notificationRepository;
     }
 
-    public void sendNotification(String login, NotificationType type, String message) {
+    public void sendNotification(String keycloakId, String userLogin, NotificationType type, String message) {
         try {
-            // Просто сохраняем уведомление в БД и логируем
-            Notification notification = new Notification(login, type, message);
+            Notification notification = new Notification(keycloakId, userLogin, type, message);
             notification.setSent(true); // Отмечаем как "отправленное" (хотя это заглушка)
 
             notificationRepository.save(notification);
-
-            // Логируем в консоль (это и есть наша "отправка" по заданию)
-            logger.info("🔔 NOTIFICATION for {}: {} - {}", login, type.getDescription(), message);
+            logger.info("🔔 NOTIFICATION for {}: {} - {}", keycloakId, type.getDescription(), message);
 
         } catch (Exception e) {
-            logger.error("Failed to save notification for {}: {}", login, e.getMessage());
+            logger.error("Failed to save notification for {}: {}", keycloakId, e.getMessage());
         }
     }
 
-    public List<Notification> getNotificationsByLogin(String login) {
+    public List<Notification> getNotificationsByKeycloakId(String keycloakId) {
         try {
-            return notificationRepository.findByLoginOrderByTimestampDesc(login);
+            return notificationRepository.findByKeycloakIdOrderByTimestampDesc(keycloakId);
         } catch (Exception e) {
-            logger.error("Failed to get notifications for {}: {}", login, e.getMessage());
+            logger.error("Failed to get notifications for keycloakId {}: {}", keycloakId, e.getMessage());
             return List.of();
         }
     }
-
-    // Убираем все методы для email/sms - не нужны
 }

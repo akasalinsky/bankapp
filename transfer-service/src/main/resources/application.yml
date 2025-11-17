@@ -10,7 +10,7 @@ spring:
       fail-fast: false
   # Локальные настройки (пока Config Client отключен)
   datasource:
-    url: jdbc:postgresql://localhost:5432/transfer_db
+    url: jdbc:postgresql://postgres:5432/transfer_db
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -22,7 +22,7 @@ spring:
   eureka:
     client:
       service-url:
-        defaultZone: http://localhost:8761/eureka/
+        defaultZone: http://eureka-server:8761/eureka/
     instance:
       prefer-ip-address: true
 

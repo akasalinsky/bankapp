@@ -1,10 +1,58 @@
 server:
-  port: 8080
+  port: 8080 # Порт, на котором работает Gateway
 
 spring:
   application:
     name: gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+        # 1. Маршрут для Config Server
+            - id: config-server
+              uri: lb://config-server # Строчное написание
+              predicates:
+                - Path=/config/**
+              filters:
+                - StripPrefix=1
 
-logging:
-  level:
-    com.practicum.bank.account-service: DEBUG
+        # 2. Маршрут для Accounts API
+            - id: accounts-api-route
+              uri: lb://accounts-service # Строчное написание
+              predicates:
+                - Path=/api/accounts/**
+
+            # 3. Маршрут для Users API (также ведет на accounts-service)
+            - id: users-api-route
+              uri: lb://accounts-service # Строчное написание
+              predicates:
+                - Path=/api/users/**
+
+            # 4. Маршрут для Cash Service
+            - id: cash-service-route
+              uri: lb://cash-service # Строчное написание
+              predicates:
+                - Path=/api/cash/**
+
+            # 5. Маршрут для Transfer Service
+            - id: transfer-service-route
+              uri: lb://transfer-service # Строчное написание
+              predicates:
+                - Path=/api/transfers/**
+
+            # 6. Маршрут для Eureka UI (если нужен)
+            - id: eureka-server
+              uri: http://eureka-server:8761
+              predicates:
+                - Path=/eureka-server/**
+
+eureka:
+  client:
+    serviceUrl:
+      # Убедитесь, что ваш Eureka Server запущен на этом порту
+      defaultZone: http://eureka-server:8761/eureka
+  instance:
+    hostname: gateway
+    prefer-ip-address: false
+    instance-id: ${spring.application.name}:${eureka.instance.hostname}:${server.port}

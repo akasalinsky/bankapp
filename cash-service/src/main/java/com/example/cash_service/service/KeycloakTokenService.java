@@ -1,5 +1,6 @@
 package com.example.cash_service.service;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -17,7 +18,7 @@ public class KeycloakTokenService {
     private String cachedToken;
     private long tokenExpiryTime;
 
-    public KeycloakTokenService(RestTemplate restTemplate, KeycloakConfig keycloakConfig) {
+    public KeycloakTokenService(@Qualifier("simpleRestTemplate") RestTemplate restTemplate, KeycloakConfig keycloakConfig) {
         this.restTemplate = restTemplate;
         this.keycloakConfig = keycloakConfig;
     }

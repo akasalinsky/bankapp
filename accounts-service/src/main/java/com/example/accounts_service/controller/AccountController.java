@@ -47,13 +47,11 @@ public class AccountController {
             @JsonProperty("toCurrency") String toCurrency,
             @JsonProperty("amount") BigDecimal amount) {}
 
-    // Внутренний класс для запроса на пополнение/снятие
     private record BalanceUpdateRequest(
             String keycloakId,
             String currency,
             BigDecimal amount,
             String operationType) {}
-
 
     @PostMapping
     public ResponseEntity<Account> createAccount(
@@ -117,17 +115,13 @@ public class AccountController {
 
     @GetMapping("/user/{keycloakId}")
     public ResponseEntity<Map<String, Object>> getUserInfo(@PathVariable String keycloakId) {
-        // Проверка, что аутентифицированный пользователь запрашивает свои данные
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.getName().equals(keycloakId)) {
-            // Защита от запроса чужих данных
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         try {
             List<Account> accounts = accountService.getUserAccounts(keycloakId);
-
-            // Извлечение данных из JWT для отображения в front-ui
             String firstName = null;
             String lastName = null;
             if (auth instanceof JwtAuthenticationToken jwtAuth) {
@@ -136,7 +130,6 @@ public class AccountController {
                 lastName = jwt.getClaimAsString("family_name");
             }
 
-            // Формирование ответа
             Map<String, Object> response = Map.of(
                     "keycloakId", keycloakId,
                     "firstName", firstName != null ? firstName : "Имя",
@@ -153,22 +146,8 @@ public class AccountController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
         }
     }
-
-    // --------------------------------------------------------
-    // Эндпоинты для перевода (вызываются front-ui)
-    // --------------------------------------------------------
-
-    /**
-     * Внутренний перевод (между своими счетами).
-     */
     @PostMapping("/transfer/self")
     public ResponseEntity<String> transferSelf(@RequestBody TransferRequest request) {
-        // Проверка: отправитель и получатель должны быть текущим пользователем
-        /*Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.getName().equals(request.fromKeycloakId()) || !request.fromKeycloakId().equals(request.toKeycloakId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied for self-transfer.");
-        }*/
-
         try {
             accountService.transferFunds(
                     request.fromLogin(),
@@ -182,19 +161,8 @@ public class AccountController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
-
-    /**
-     * Перевод другому пользователю.
-     */
     @PostMapping("/transfer/other")
     public ResponseEntity<String> transferOther(@RequestBody TransferRequest request) {
-        // Проверка: только отправитель должен быть текущим пользователем
-        /*Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.getName().equals(request.fromKeycloakId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied for initiating transfer.");
-        }*/
-
-        // Дополнительная проверка, чтобы исключить использование этого эндпоинта для self-переводов
         if (request.fromLogin().equals(request.toLogin())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Use /transfer/self endpoint for self transfers.");
         }
@@ -212,8 +180,4 @@ public class AccountController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
-
-
-
-
 }

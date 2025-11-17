@@ -4,17 +4,16 @@ server:
 spring:
   application:
     name: config-server
-  cloud:
-    config:
-      server:
-        git:
-          uri: file:///C:/education/bankapp/bank-config-repo
-        bootstrap: true
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8085/realms/bank-realm
+          issuer-uri: http://keycloak:8080/realms/bank-realm
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: file:///config-repo
 
 management:
   endpoints:
@@ -25,6 +24,6 @@ management:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://eureka-server:8761/eureka/
   instance:
     prefer-ip-address: true

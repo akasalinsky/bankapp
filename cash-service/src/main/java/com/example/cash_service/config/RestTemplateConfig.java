@@ -8,9 +8,17 @@ import org.springframework.web.client.RestTemplate;
 @Configuration
 public class RestTemplateConfig {
 
-    @LoadBalanced
+    //@LoadBalanced
     @Bean
+    @LoadBalanced
     public RestTemplate restTemplate(){
+        return new RestTemplate();
+    }
+
+
+    @Bean
+    // Для прямых вызовов (например, Keycloak) - БЕЗ Load Balancer
+    public RestTemplate simpleRestTemplate(){
         return new RestTemplate();
     }
 }

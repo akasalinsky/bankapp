@@ -6,8 +6,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class KeycloakConfig {
 
-    // ИСПРАВЛЕНО: Правильный URL Keycloak (порт 8085!)
-    @Value("${keycloak.url:http://localhost:8085}")
+    @Value("${keycloak.url:http://keycloak:8080}")
     private String keycloakUrl;
 
     // ИСПРАВЛЕНО: Правильный Realm
@@ -15,14 +14,12 @@ public class KeycloakConfig {
     private String realm;
 
     // ИСПРАВЛЕНО: Правильный Client ID
-    @Value("${spring.keycloak.client-id}")
+    @Value("${keycloak.client-id}")
     private String clientId;
 
-    // ИСПРАВЛЕНО: Правильный Client Secret
-    @Value("${spring.keycloak.client-secret}")
+    @Value("${keycloak.client-secret}")
     private String clientSecret;
 
-    // Геттеры
     public String getKeycloakUrl() { return keycloakUrl; }
     public String getRealm() { return realm; }
     public String getClientId() { return clientId; }

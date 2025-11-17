@@ -1,6 +1,7 @@
 package com.example.accounts_service.service;
 
 import com.example.accounts_service.config.KeycloakConfig;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -16,15 +17,20 @@ import java.util.*;
 @Service
 public class KeycloakClient {
 
-    private final RestTemplate restTemplate;
+    // ИСПРАВЛЕНИЕ 1: Используем одно поле для RestTemplate без Load Balancer
+    private final RestTemplate keycloakRestTemplate;
     private final KeycloakConfig keycloakConfig;
 
-    public KeycloakClient(RestTemplate restTemplate, KeycloakConfig keycloakConfig) {
-        this.restTemplate = restTemplate;
+    // ИСПРАВЛЕНИЕ 2: Конструктор использует @Qualifier для внедрения "simpleRestTemplate"
+    public KeycloakClient(
+            @Qualifier("simpleRestTemplate") RestTemplate keycloakRestTemplate,
+            KeycloakConfig keycloakConfig) {
+
+        this.keycloakRestTemplate = keycloakRestTemplate;
         this.keycloakConfig = keycloakConfig;
     }
 
-    private String getAdminToken() {
+    public String getAdminToken() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
         System.out.println("Вот оно " + keycloakConfig.getClientId() + "и оно " + keycloakConfig.getClientSecret());
@@ -36,8 +42,10 @@ public class KeycloakClient {
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
 
+        System.out.println(keycloakConfig.getTokenUrl());
         try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(
+            // ИСПОЛЬЗОВАНИЕ: Заменено simpleRestTemplate на keycloakRestTemplate
+            ResponseEntity<Map> response = keycloakRestTemplate.postForEntity(
                     keycloakConfig.getTokenUrl(),
                     request,
                     Map.class
@@ -57,7 +65,7 @@ public class KeycloakClient {
             e.printStackTrace();
             throw new RuntimeException("Ошибка при получении административного токена Keycloak: " + e.getMessage(), e);
         }
-        }
+    }
 
 
     public String createUserInKeycloak(String login, String password, String firstName, String lastName, LocalDate birthDate) {
@@ -89,12 +97,16 @@ public class KeycloakClient {
         String usersUrl = keycloakConfig.getKeycloakUrl() + "/admin/realms/" + keycloakConfig.getRealm() + "/users";
 
         try {
-            ResponseEntity<String> response = restTemplate.exchange(
+            // ИСПОЛЬЗОВАНИЕ: Заменено restTemplate на keycloakRestTemplate
+            System.out.println("Запуск ресттемплейт");
+            ResponseEntity<String> response = keycloakRestTemplate.exchange(
                     usersUrl,
                     HttpMethod.POST,
                     entity,
                     String.class
             );
+            System.out.println("Запуск ресттемплейт прошел хорошо");
+
 
             if (response.getStatusCode() == HttpStatus.CREATED) {
                 System.out.println("Статус: 201 CREATED (пользователь создан)");
@@ -138,16 +150,13 @@ public class KeycloakClient {
         String realm = keycloakConfig.getRealm();
 
 
-        // Тело запроса для сброса пароля (Ожидается Map, содержащая тип кредов)
+        // Тело запроса для сброса пароля
         Map<String, Object> passwordCredential = Map.of(
                 "type", "password",
                 "value", newPassword,
                 "temporary", false // Делаем пароль постоянным
         );
 
-        // Keycloak Admin API для reset-password требует, чтобы тело было объектом CredentialRepresentation,
-        // но в Spring и RestTemplate часто требуется List для этого эндпоинта.
-        // Мы используем List<Map> для максимальной совместимости.
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(passwordCredential, headers);
 
         // URL: {adminUrl}/admin/realms/{realm}/users/{id}/reset-password
@@ -156,8 +165,8 @@ public class KeycloakClient {
                 .toUriString();
 
         try {
-            // Выполняем PUT запрос. Keycloak вернет 204 No Content при успехе.
-            restTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
+            // ИСПОЛЬЗОВАНИЕ: Заменено restTemplate на keycloakRestTemplate
+            keycloakRestTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
         } catch (HttpClientErrorException e) {
             // 400 Bad Request, 404 Not Found и другие HTTP ошибки
             throw new RuntimeException("Ошибка Keycloak API при смене пароля (HTTP " + e.getRawStatusCode() + "): " + e.getResponseBodyAsString(), e);
@@ -166,42 +175,6 @@ public class KeycloakClient {
         }
     }
 
-    /*public void updateUserProfile(String keycloakUserId, String login, String firstName, String lastName, String email, LocalDate birthDate) {
-        String adminToken = getAdminToken();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(adminToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        String keycloakAdminUrl = keycloakConfig.getKeycloakUrl();
-        String realm = keycloakConfig.getRealm();
-
-        Map<String, Object> userUpdateBody = new HashMap<>();
-
-        // Keycloak требует, чтобы username (login) присутствовал при обновлении
-        userUpdateBody.put("username", login);
-        userUpdateBody.put("firstName", firstName);
-        userUpdateBody.put("lastName", lastName);
-
-        // 2. Добавляем кастомный атрибут birthdate
-        userUpdateBody.put("attributes", Map.of("birthdate", List.of(birthDate.toString())));
-
-        // 3. Создаем HttpEntity с обновленным телом
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(userUpdateBody, headers);
-
-        // 4. ИСПОЛЬЗУЕМ ПРАВИЛЬНЫЙ URL ДЛЯ ОБНОВЛЕНИЯ ПОЛЬЗОВАТЕЛЯ (PUT на базовый ресурс)
-        String url = UriComponentsBuilder.fromHttpUrl(keycloakAdminUrl)
-                .pathSegment("admin", "realms", realm, "users", keycloakUserId) // <--- ПРАВИЛЬНЫЙ URL
-                .toUriString();
-
-        try {
-            // Выполняем PUT запрос. Keycloak вернет 204 No Content при успехе.
-            restTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
-        } catch (HttpClientErrorException e) {
-            // 400 Bad Request, 404 Not Found и другие HTTP ошибки
-            throw new RuntimeException("Ошибка Keycloak API при смене данных пользователя (HTTP " + e.getRawStatusCode() + "): " + e.getResponseBodyAsString(), e);
-        } catch (Exception e) {
-            throw new RuntimeException("Неизвестная ошибка при смене данных пользователя: " + e.getMessage(), e);
-        }
-    }*/
     public void updateUserProfile(String keycloakUserId, Map<String, Object> userUpdateBody) {
         // Получение токена и заголовков остается прежним
         String adminToken = getAdminToken();
@@ -212,41 +185,16 @@ public class KeycloakClient {
         String realm = keycloakConfig.getRealm();
 
         // 1. Формируем тело запроса для обновления
-        // Keycloak требует полный объект пользователя. Используем HashMap для удобного добавления/проверки полей.
-        //Map<String, Object> userUpdateBody = new HashMap<>();
-
-        // Keycloak требует, чтобы username (login) присутствовал при обновлении
-        //userUpdateBody.put("username", login);
-
-        // 2. Добавляем поля только если они не пустые (решение проблемы 400, если поле не указано)
-      /*  if (firstName != null && !firstName.trim().isEmpty()) {
-            userUpdateBody.put("firstName", firstName);
-        }
-        if (lastName != null && !lastName.trim().isEmpty()) {
-            userUpdateBody.put("lastName", lastName);
-        }
-        // 3. ОБЯЗАТЕЛЬНО отправляем email, чтобы Keycloak его не сбросил
-        if (email != null && !email.trim().isEmpty()) {
-            userUpdateBody.put("email", email);
-            userUpdateBody.put("emailVerified", true); // Обычно при ручном обновлении делаем подтвержденным
-        }
-
-        // 4. Обрабатываем кастомный атрибут birthdate
-        if (birthDateString != null && !birthDateString.trim().isEmpty()) {
-            userUpdateBody.put("attributes", Map.of("birthdate", List.of(birthDateString)));
-        }*/
-
-        // 5. Создаем HttpEntity
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(userUpdateBody, headers);
 
-        // 6. ПРАВИЛЬНЫЙ URL: PUT на базовый ресурс пользователя
+        // 2. ПРАВИЛЬНЫЙ URL: PUT на базовый ресурс пользователя
         String url = UriComponentsBuilder.fromHttpUrl(keycloakAdminUrl)
                 .pathSegment("admin", "realms", realm, "users", keycloakUserId)
                 .toUriString();
 
         try {
-            // Выполняем PUT запрос. Keycloak вернет 204 No Content при успехе.
-            restTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
+            // ИСПОЛЬЗОВАНИЕ: Заменено restTemplate на keycloakRestTemplate
+            keycloakRestTemplate.exchange(url, HttpMethod.PUT, entity, Void.class);
         } catch (HttpClientErrorException e) {
             // ... (Обработка ошибок)
             System.err.println("Keycloak Response Body: " + e.getResponseBodyAsString());
@@ -273,7 +221,8 @@ public class KeycloakClient {
                 .toUriString();
 
         try {
-            ResponseEntity<List> response = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
+            // ИСПОЛЬЗОВАНИЕ: Заменено restTemplate на keycloakRestTemplate
+            ResponseEntity<List> response = keycloakRestTemplate.exchange(url, HttpMethod.GET, entity, List.class);
 
             List<Map<String, Object>> users = response.getBody();
             if (users == null || users.isEmpty()) {
@@ -306,7 +255,8 @@ public class KeycloakClient {
                 .toUriString();
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+            // ИСПОЛЬЗОВАНИЕ: Заменено restTemplate на keycloakRestTemplate
+            ResponseEntity<Map> response = keycloakRestTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
             if (response.getBody() == null) {
                 throw new RuntimeException("Keycloak вернул пустое тело при запросе информации о пользователе.");
             }
