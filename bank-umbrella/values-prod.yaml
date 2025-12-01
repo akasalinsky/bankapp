@@ -1,0 +1,145 @@
+# Production Environment Configuration
+# This file overrides default values for production environment
+
+# Production environment uses higher resources and enables HA features
+
+# PostgreSQL
+postgres-db:
+  enabled: true
+  replicaCount: 1  # For true HA, consider StatefulSet with replicas
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "1000m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+  persistence:
+    enabled: true
+    size: 10Gi
+
+# OAuth Server (Keycloak)
+oauth-server:
+  enabled: true
+  replicaCount: 2  # HA mode
+  resources:
+    requests:
+      memory: "2Gi"
+      cpu: "1000m"
+    limits:
+      memory: "4Gi"
+      cpu: "2000m"
+
+# Front UI
+front-ui:
+  enabled: true
+  replicaCount: 2  # Load balancing
+  image:
+    tag: stable
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+    - name: LOGGING_LEVEL_ROOT
+      value: "WARN"
+
+# Accounts Service
+accounts-service:
+  enabled: true
+  replicaCount: 3  # HA with load balancing
+  image:
+    tag: stable
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+    - name: LOGGING_LEVEL_ROOT
+      value: "WARN"
+
+# Cash Service
+cash-service:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: stable
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+# Transfer Service
+transfer-service:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: stable
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+# Exchange Service
+exchange-service:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: stable
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+# Exchange Generator
+exchange-generator:
+  enabled: true
+  replicaCount: 1  # Only one instance needed
+  image:
+    tag: stable
+
+# Notification Service
+notification-service:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: stable
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+# Ingress
+ingress:
+  enabled: true
+  hosts:
+    - host: bank.prod.local
+      paths:
+        - path: /
+          pathType: Prefix
+  annotations:
+    # Production ingress annotations
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"

@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front-ui-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: front-ui
+  template:
+    metadata:
+      labels:
+        app: front-ui
+    spec:
+      containers:
+        - name: front-ui-app
+          image: bank-app/front-ui:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8088 # Порт из docker-compose
+          envFrom:
+            - configMapRef:
+                name: bank-common-config # Берем общие настройки (отключение Eureka/Config)
+          env:
+            # Указываем, куда стучаться за сервисами (по K8s Service DNS)
+            - name: ACCOUNTS_SERVICE_URL
+              value: http://accounts-service:8081
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_ID
+              value: bank-client
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_SECRET
+              value: L9y7QNdc8SqHm0FZkN8pXJkpF2bN7nTf # Секрет, используемый для Keycloak
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_SCOPE
+              value: openid,profile,email
+
+            #- name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI
+             # value: http://keycloak.localhost/realms/bank-realm # Адрес Keycloak Service
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI
+              value: http://keycloak.localhost/realms/bank-realm/protocol/openid-connect/auth
+
+            # 3. BACK-CHANNEL (Для сервера front-ui): Используем ВНУТРЕННИЙ DNS Keycloak Service
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI
+              value: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+
+            # 4. BACK-CHANNEL (Для сервера front-ui): Используем ВНУТРЕННИЙ DNS Keycloak Service
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI
+              value: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+
+            # 5. BACK-CHANNEL (Для сервера front-ui): Используем ВНУТРЕННИЙ DNS Keycloak Service
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI
+              value: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
+
+            # 6. Обязательное поле для ручной настройки
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_NAME_ATTRIBUTE
+              value: preferred_username
+
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_AUTHORIZATION_GRANT_TYPE
+              value: authorization_code
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_REDIRECT_URI
+              value: "{baseUrl}/oauth2/code/{registrationId}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: front-ui # Имя Service для front-ui
+spec:
+  selector:
+    app: front-ui
+  ports:
+    - protocol: TCP
+      port: 8088
+      targetPort: 8088

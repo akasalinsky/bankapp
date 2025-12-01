@@ -1,0 +1,46 @@
+{{- $ingressValues := index $.Values "ingress" -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "front-ui.fullname" . }}-config
+  labels:
+    {{- include "front-ui.labels" . | nindent 4 }}
+data:
+  application.yml: |
+    server:
+      port: {{ .Values.service.port }}
+    spring:
+      application:
+        name: {{ include "front-ui.name" . }}
+      security:
+        oauth2:
+          client:
+            registration:
+              keycloak:
+                client-id: {{ .Values.app.keycloak.clientId }}
+                authorization-grant-type: authorization_code
+                redirect-uri: "http://{{ $ingressValues.hostname }}/login/oauth2/code/keycloak"
+                scope: {{ .Values.app.keycloak.scope }}
+            provider:
+              keycloak:
+                authorization-uri: http://{{ $ingressValues.hostname }}/realms/bank-realm/protocol/openid-connect/auth
+                token-uri: {{ .Values.app.keycloak.internalTokenUri | replace "oauth-server" (include "oauth-server.fullname" $) }}
+                jwk-set-uri: {{ .Values.app.keycloak.internalCertsUri | replace "oauth-server" (include "oauth-server.fullname" $) }}
+                user-info-uri: {{ .Values.app.keycloak.internalUserInfoUri | replace "oauth-server" (include "oauth-server.fullname" $) }}
+                user-name-attribute: {{ .Values.app.keycloak.userNameAttribute }}
+    app:
+      keycloak:
+        server-url: http://{{ $ingressValues.hostname }}
+        realm: bank-realm
+      gateway:
+        url: http://{{ $ingressValues.hostname }}
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: "*"
+    logging:
+      level:
+        com.practicum.bank.front_ui: DEBUG
+        org.springframework.web.client: DEBUG
+        org.springframework.security: DEBUG

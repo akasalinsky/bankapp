@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accounts-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: accounts-service
+  template:
+    metadata:
+      labels:
+        app: accounts-service
+    spec:
+      containers:
+        - name: accounts-app
+          # Важно: имя образа должно совпадать с тем, как вы его сбилдили в Docker
+          image: bank-app/accounts-service:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          # Вот здесь мы связываем приложение с Базой Данных
+          envFrom:
+            - configMapRef:
+                name: bank-common-config # <-- Имя ConfigMap, который мы создали
+          env:
+            - name: SPRING_DATASOURCE_URL
+              # "postgres" — это имя сервиса базы данных, который мы создали в предыдущем шаге
+              value: jdbc:postgresql://postgres:5432/bank_accounts
+            - name: SPRING_DATASOURCE_USERNAME
+              value: postgres
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: postgres
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              value: update
+            # Отключаем лишнее, чтобы не мешало запуску
+            - name: SPRING_CLOUD_CONFIG_ENABLED
+              value: "false"
+            - name: EUREKA_CLIENT_ENABLED
+              value: "false"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounts-service  # <-- Это имя сервиса, которое будут использовать другие сервисы
+spec:
+  selector:
+    app: accounts-service # <-- Должно совпадать с меткой в вашем Deployment!
+  ports:
+    - protocol: TCP
+      port: 8081         # <-- Порт, который слушает Service
+      targetPort: 8080   # <-- Порт внутри контейнера

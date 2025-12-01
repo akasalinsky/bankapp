@@ -1,0 +1,16 @@
+# Service для Keycloak (OAuth Server)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "oauth-server.fullname" . }} # DNS имя, которое будут использовать микросервисы
+  labels:
+    {{- include "oauth-server.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "oauth-server.selectorLabels" . | nindent 4 }}

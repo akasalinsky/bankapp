@@ -2,6 +2,7 @@ package com.example.front_ui.controller;
 
 import com.example.front_ui.model.ExchangeRate;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -47,7 +48,8 @@ public class MainController {
     @Autowired
     private OAuth2AuthorizedClientService authorizedClientService;
 
-    private final String gatewayUrl = "http://gateway";
+    @Value("${app.gateway.url}")
+    private String gatewayUrl;
 
     @GetMapping("/")
     public String mainPage(Model model, Authentication authentication) {

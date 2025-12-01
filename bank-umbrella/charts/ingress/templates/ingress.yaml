@@ -1,0 +1,42 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ingress.fullname" . }}
+  labels:
+    {{- include "ingress.labels" . | nindent 4 }}
+  annotations:
+    # kubernetes.io/ingress.class: {{ .Values.ingressClass }} # Deprecated
+spec:
+  ingressClassName: {{ .Values.ingressClass }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ingress.fullname" . }}
+  labels:
+    {{- include "ingress.labels" . | nindent 4 }}
+  annotations:
+    # kubernetes.io/ingress.class: {{ .Values.ingressClass }} # Deprecated
+spec:
+  ingressClassName: {{ .Values.ingressClass }}
+  rules:
+    - host: {{ .Values.hostname }} # bank.local (пример)
+      http:
+        paths:
+          # 1. Маршрут для Front UI (основное приложение)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ printf "%s-front-ui" .Release.Name }}
+                port:
+                  number: 80 # Порт Service Front UI
+
+          # 2. Маршрут для Keycloak (OAuth Server)
+          # Трафик /realms/... должен идти на Keycloak
+          - path: /realms
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ printf "%s-oauth-server" .Release.Name }}
+                port:
+                  number: 8080 # Порт Service Keycloak

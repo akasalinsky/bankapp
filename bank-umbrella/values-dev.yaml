@@ -1,0 +1,138 @@
+# Development Environment Configuration
+# This file overrides default values for development environment
+
+# Development environment uses smaller resource allocations and enables debug features
+
+# PostgreSQL
+postgres-db:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# OAuth Server (Keycloak)
+oauth-server:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# Front UI
+front-ui:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: dev
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "dev"
+    - name: LOGGING_LEVEL_ROOT
+      value: "DEBUG"
+
+# Accounts Service
+accounts-service:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: dev
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "dev"
+    - name: LOGGING_LEVEL_ROOT
+      value: "DEBUG"
+
+# Cash Service
+cash-service:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: dev
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Transfer Service
+transfer-service:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: dev
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Exchange Service
+exchange-service:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: dev
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Exchange Generator
+exchange-generator:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: dev
+
+# Notification Service
+notification-service:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: dev
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Ingress
+ingress:
+  enabled: true
+  hosts:
+    - host: bank.dev.local
+      paths:
+        - path: /
+          pathType: Prefix

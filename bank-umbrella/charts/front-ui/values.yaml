@@ -1,0 +1,29 @@
+# Значения для сабчарта front-ui
+replicaCount: 1
+
+image:
+  repository: bank-app/front-ui
+  tag: v1
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8088 # Внутренний порт, который использует приложение
+
+# Переменные окружения для Spring Boot/Keycloak
+app:
+  accountsServiceUrl: "http://accounts-service:8081" # Используем K8s Service DNS
+  keycloak:
+    clientId: front-ui # ИСПРАВЛЕНО: должно совпадать с realm.json
+    # Секрет будет браться из K8s Secret
+    scope: openid, profile, email
+    # Внутренний K8s Service DNS для Keycloak
+    internalTokenUri: "http://oauth-server:8080/realms/bank-realm/protocol/openid-connect/token"
+    internalCertsUri: "http://oauth-server:8080/realms/bank-realm/protocol/openid-connect/certs"
+    internalUserInfoUri: "http://oauth-server:8080/realms/bank-realm/protocol/openid-connect/userinfo"
+    userNameAttribute: preferred_username
+  gatewayUrl: "http://gateway:8080"
+
+# External URL settings (для переопределения в зонтичном чарте)
+external:
+  hostname: bank.local # Должен совпадать с Ingress

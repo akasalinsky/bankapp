@@ -1,0 +1,16 @@
+# Service для микросервиса Exchange Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "exchange-service.fullname" . }}
+  labels:
+    {{- include "exchange-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8083
+      targetPort: 8083
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "exchange-service.selectorLabels" . | nindent 4 }}

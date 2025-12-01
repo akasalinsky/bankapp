@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "oauth-server.fullname" . }}
+  labels:
+    {{- include "oauth-server.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "oauth-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "oauth-server.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: IfNotPresent
+          args: ["start-dev", "--import-realm"]
+          volumeMounts:
+            - name: realm-config
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+          env:
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KEYCLOAK_ADMIN
+              value: {{ .Values.env.KEYCLOAK_ADMIN | quote }}
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "oauth-server.fullname" . }}-secret
+                  key: ADMIN_PASSWORD
+            - name: KC_DB
+              value: {{ .Values.env.KC_DB | quote }}
+            - name: KC_DB_URL
+              value: {{ printf "jdbc:postgresql://%s-postgres-db:5432/accounts_db" .Release.Name | quote }}
+            - name: KC_DB_USERNAME
+              value: {{ .Values.env.KC_DB_USERNAME | quote }}
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-postgres-db-secret" .Release.Name }}
+                  key: POSTGRES_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: realm-config
+          configMap:
+            name: {{ include "oauth-server.fullname" . }}-realm-config

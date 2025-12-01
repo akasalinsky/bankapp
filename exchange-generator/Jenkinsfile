@@ -1,0 +1,119 @@
+pipeline {
+    agent any
+    
+    environment {
+        SERVICE_NAME = 'exchange-generator'
+        DOCKER_IMAGE = "bank-app/${SERVICE_NAME}"
+        HELM_CHART_PATH = "bank-umbrella/charts/${SERVICE_NAME}"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code...'
+                checkout scm
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                echo 'Building exchange-generator...'
+                dir('exchange-generator') {
+                    sh 'mvn clean package -DskipTests'
+                }
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                echo 'Running tests...'
+                dir('exchange-generator') {
+                    sh 'mvn test'
+                }
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
+        
+        stage('Docker Build') {
+            steps {
+                echo 'Building Docker image...'
+                script {
+                    docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}", "./exchange-generator")
+                    docker.build("${DOCKER_IMAGE}:latest", "./exchange-generator")
+                }
+            }
+        }
+        
+        stage('Helm Lint') {
+            steps {
+                echo 'Linting Helm chart...'
+                sh "helm lint ${HELM_CHART_PATH}"
+            }
+        }
+        
+        stage('Deploy to Test') {
+            steps {
+                echo 'Deploying to test namespace...'
+                sh """
+                    helm upgrade --install ${SERVICE_NAME} ${HELM_CHART_PATH} \\
+                        --namespace test \\
+                        --create-namespace \\
+                        --set image.tag=${BUILD_NUMBER} \\
+                        --wait \\
+                        --timeout 5m
+                """
+            }
+        }
+        
+        stage('Helm Test (Test)') {
+            steps {
+                echo 'Running Helm tests in test namespace...'
+                sh "helm test ${SERVICE_NAME} --namespace test"
+            }
+        }
+        
+        stage('Deploy to Prod') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo 'Deploying to production namespace...'
+                input message: 'Deploy to production?', ok: 'Deploy'
+                sh """
+                    helm upgrade --install ${SERVICE_NAME} ${HELM_CHART_PATH} \\
+                        --namespace prod \\
+                        --create-namespace \\
+                        --set image.tag=${BUILD_NUMBER} \\
+                        --wait \\
+                        --timeout 5m
+                """
+            }
+        }
+        
+        stage('Helm Test (Prod)') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo 'Running Helm tests in prod namespace...'
+                sh "helm test ${SERVICE_NAME} --namespace prod"
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+        always {
+            cleanWs()
+        }
+    }
+}

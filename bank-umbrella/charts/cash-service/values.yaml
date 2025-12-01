@@ -1,0 +1,14 @@
+# Default values for cash-service.
+replicaCount: 1
+
+image:
+  repository: bank-app/cash-service
+  tag: v1
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8082
+
+env:
+  DB_USERNAME: postgres

@@ -1,0 +1,60 @@
+# Общие настройки для зонтичного чарта (Bank Umbrella)
+
+# Внешний хост, который будет использоваться Ingress'ом
+ingress:
+  enabled: true
+  hostname: bank.local # Укажите здесь ваш внешний домен или bank.local
+  ingressClass: nginx # Или другое имя вашего Ingress-контроллера
+
+# 1. Инфраструктурные компоненты (ВКЛЮЧАЕМ)
+postgres-db:
+  enabled: true
+  replicaCount: 1
+  db:
+    name: accounts_db
+    user: postgres
+  storageSize: 5Gi # Минимальный размер хранилища для учебного проекта
+
+oauth-server:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: 26.4.0
+  env:
+    # Настройки для Keycloak, чтобы он знал, как подключиться к БД
+    KC_DB: postgres
+    KC_DB_USERNAME: postgres
+    KEYCLOAK_ADMIN: admin
+
+# 2. Микросервисы (ВКЛЮЧАЕМ ТОЛЬКО front-ui)
+front-ui:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: bank-app/front-ui
+    tag: v1 # Используйте ваш актуальный тег образа
+
+accounts-service:
+  enabled: true # ВКЛЮЧЕН
+  # ... остальные настройки этого чарта не будут загружены
+
+cash-service:
+  enabled: true # ВКЛЮЧЕН
+  # ...
+
+transfer-service:
+  enabled: true # ВКЛЮЧЕН
+  # ...
+
+exchange-service:
+  enabled: true # ВКЛЮЧЕН
+  # ...
+
+exchange-generator:
+  enabled: true # ВКЛЮЧЕН
+  # ...
+
+notification-service:
+  enabled: true # ВКЛЮЧЕН
+  # ...

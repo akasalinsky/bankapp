@@ -1,0 +1,54 @@
+# StatefulSet для PostgreSQL (обеспечивает постоянство данных)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "postgres-db.fullname" . }}
+  labels:
+    {{- include "postgres-db.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  serviceName: {{ include "postgres-db.fullname" . }}
+  selector:
+    matchLabels:
+      {{- include "postgres-db.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "postgres-db.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: postgres
+          image: "postgres:15"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+              name: postgresql
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.db.name | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.db.user | quote }}
+            # Пароль берем из Secret
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "postgres-db.fullname" . }}-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          # Health Check
+          readinessProbe:
+            exec:
+              command: [ "sh", "-c", "pg_isready -U {{ .Values.db.user }}" ]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+  # PVC Template
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: {{ .Values.storageSize | quote }}

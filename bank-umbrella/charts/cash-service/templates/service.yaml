@@ -1,0 +1,16 @@
+# Service для микросервиса Cash Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cash-service.fullname" . }} # K8s Service DNS-имя
+  labels:
+    {{- include "cash-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "cash-service.selectorLabels" . | nindent 4 }}

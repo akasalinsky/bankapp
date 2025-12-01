@@ -1,0 +1,136 @@
+# Test Environment Configuration
+# This file overrides default values for testing environment
+
+# Test environment uses moderate resources and enables integration testing features
+
+# PostgreSQL
+postgres-db:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# OAuth Server (Keycloak)
+oauth-server:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "2Gi"
+      cpu: "1000m"
+
+# Front UI
+front-ui:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: latest
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "test"
+    - name: LOGGING_LEVEL_ROOT
+      value: "INFO"
+
+# Accounts Service
+accounts-service:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: latest
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "test"
+
+# Cash Service
+cash-service:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: latest
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# Transfer Service
+transfer-service:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: latest
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# Exchange Service
+exchange-service:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: latest
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# Exchange Generator
+exchange-generator:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: latest
+
+# Notification Service
+notification-service:
+  enabled: true
+  replicaCount: 1
+  image:
+    tag: latest
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+# Ingress
+ingress:
+  enabled: true
+  hosts:
+    - host: bank.test.local
+      paths:
+        - path: /
+          pathType: Prefix

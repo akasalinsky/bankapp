@@ -1,0 +1,17 @@
+# ConfigMap для микросервиса Cash Service
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cash-service.fullname" . }}-config
+  labels:
+    {{- include "cash-service.labels" . | nindent 4 }}
+data:
+  # Настройки подключения к БД
+  DB_URL: "jdbc:postgresql://{{ printf "%s-postgres-db" .Release.Name }}:5432/accounts_db"
+  DB_USERNAME: "postgres"
+
+  # Адрес сервера авторизации Keycloak
+  OAUTH_SERVER_URL: "http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm"
+
+  # Настройки безопасности/OAuth Client Credentials
+  OAUTH_CLIENT_ID: "cash-service-client"

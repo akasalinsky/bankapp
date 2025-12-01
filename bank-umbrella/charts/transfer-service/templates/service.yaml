@@ -1,0 +1,16 @@
+# Service для микросервиса Transfer Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "transfer-service.fullname" . }} # K8s Service DNS-имя
+  labels:
+    {{- include "transfer-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8082 # Порт Service
+      targetPort: 8082 # Порт контейнера
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "transfer-service.selectorLabels" . | nindent 4 }}
