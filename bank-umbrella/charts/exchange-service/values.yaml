@@ -1,0 +1,14 @@
+# Default values for exchange-service.
+replicaCount: 1
+
+image:
+  repository: bank-app/exchange-service
+  tag: v1
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8084
+
+env:
+  DB_USERNAME: postgres

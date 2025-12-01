@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "exchange-generator.fullname" . }}-test-connection"
+  labels:
+    {{- include "exchange-generator.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox:latest
+      command:
+        - wget
+        - --spider
+        - --timeout=30
+        - "http://{{ include \"exchange-generator.fullname\" . }}:8084/actuator/health"
+  restartPolicy: Never

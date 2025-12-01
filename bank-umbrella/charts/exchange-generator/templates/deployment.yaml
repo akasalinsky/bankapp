@@ -1,0 +1,55 @@
+# Deployment для микросервиса Exchange Generator
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "exchange-generator.fullname" . }}
+  labels:
+    {{- include "exchange-generator.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "exchange-generator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "exchange-generator.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "exchange-generator.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8084
+
+          env:
+            # --- OAuth2 Resource Server Configuration ---
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+              value: "http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm"
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+              value: "http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm/protocol/openid-connect/certs"
+
+            # --- Custom Keycloak Configuration ---
+            - name: KEYCLOAK_CLIENT_ID
+              value: "exchange-generator-client"
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: exchange-generator-oauth-secret
+                  key: CLIENT_SECRET
+            - name: KEYCLOAK_TOKEN_URL
+              value: "http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm/protocol/openid-connect/token"
+
+            # --- Disable Eureka ---
+            - name: EUREKA_CLIENT_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_DISCOVERY_ENABLED
+              value: "false"
+
+          # Health Check
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8084
+            initialDelaySeconds: 40
+            periodSeconds: 15

@@ -1,0 +1,16 @@
+# Service для микросервиса Accounts Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "accounts-service.fullname" . }} # K8s Service DNS-имя: accounts-service
+  labels:
+    {{- include "accounts-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8081 # Порт, который был в docker-compose
+      targetPort: 8081
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "accounts-service.selectorLabels" . | nindent 4 }}

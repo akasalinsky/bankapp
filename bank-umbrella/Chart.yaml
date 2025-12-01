@@ -1,0 +1,61 @@
+# Chart.yaml для зонтичного Helm-чарта
+apiVersion: v2
+name: bank-umbrella
+description: Зонтичный Helm-чарт для развертывания всего микросервисного приложения "Банк" в Kubernetes.
+type: application
+version: 1.0.0
+appVersion: "2.0.0"
+
+dependencies:
+  # 1. Инфраструктурные компоненты (БД, OAuth 2.0 Server)
+  - name: postgres-db
+    version: 0.1.0
+    repository: "file://charts/postgres-db"
+    condition: postgres-db.enabled
+
+  - name: oauth-server
+    version: 0.1.0
+    repository: "file://charts/oauth-server"
+    condition: oauth-server.enabled
+
+  # 2. Микросервисы
+  - name: front-ui
+    version: 0.1.0
+    repository: "file://charts/front-ui"
+    condition: front-ui.enabled
+
+  - name: accounts-service
+    version: 0.1.0
+    repository: "file://charts/accounts-service"
+    condition: accounts-service.enabled
+
+  - name: cash-service
+    version: 0.1.0
+    repository: "file://charts/cash-service"
+    condition: cash-service.enabled
+
+  - name: transfer-service
+    version: 0.1.0
+    repository: "file://charts/transfer-service"
+    condition: transfer-service.enabled
+
+  - name: exchange-service
+    version: 0.1.0
+    repository: "file://charts/exchange-service"
+    condition: exchange-service.enabled
+
+  - name: exchange-generator
+    version: 0.1.0
+    repository: "file://charts/exchange-generator"
+    condition: exchange-generator.enabled
+
+  - name: notification-service
+    version: 0.1.0
+    repository: "file://charts/notification-service"
+    condition: notification-service.enabled
+
+  # 3. Gateway API / Ingress для внешнего доступа
+  - name: ingress
+    version: 0.1.0
+    repository: "file://charts/ingress"
+    condition: ingress.enabled

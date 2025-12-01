@@ -1,0 +1,16 @@
+# Service для микросервиса Exchange Generator
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "exchange-generator.fullname" . }}
+  labels:
+    {{- include "exchange-generator.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8084
+      targetPort: 8084
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "exchange-generator.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "oauth-server.fullname" . }}-realm-config
+  labels:
+    {{- include "oauth-server.labels" . | nindent 4 }}
+data:
+  realm.json: |
+{{ .Files.Get "files/realm.json" | indent 4 }}

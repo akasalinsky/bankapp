@@ -1,0 +1,24 @@
+dependencies:
+- name: postgres-db
+  repository: file://charts/postgres-db
+  version: 0.1.0
+- name: oauth-server
+  repository: file://charts/oauth-server
+  version: 0.1.0
+- name: front-ui
+  repository: file://charts/front-ui
+  version: 0.1.0
+- name: accounts-service
+  repository: file://charts/accounts-service
+  version: 0.1.0
+- name: cash-service
+  repository: file://charts/cash-service
+  version: 0.1.0
+- name: transfer-service
+  repository: file://charts/transfer-service
+  version: 0.1.0
+- name: ingress
+  repository: file://charts/ingress
+  version: 0.1.0
+digest: sha256:0c720bd2da94abb9201f157ddf7321702e78219d857a2660b9860ffcbc73ffe2
+generated: "2025-12-01T23:15:31.9213236+04:00"

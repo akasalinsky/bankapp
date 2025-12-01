@@ -1,0 +1,5 @@
+apiVersion: v2
+name: oauth-server
+description: A Helm chart for Keycloak (OAuth 2.0 Server)
+version: 0.1.0
+appVersion: "24.0"

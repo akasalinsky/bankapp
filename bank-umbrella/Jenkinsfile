@@ -1,0 +1,35 @@
+pipeline {
+    agent any
+
+    environment {
+        HELM_RELEASE_NAME = 'bank-system'
+        K8S_NAMESPACE_DEV = 'bank-dev'
+        K8S_NAMESPACE_PROD = 'bank-prod'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Validate Helm Chart') {
+            steps {
+                dir('bank-umbrella') {
+                    sh 'helm lint .'
+                }
+            }
+        }
+
+        stage('Deploy to Dev') {
+            steps {
+                dir('bank-umbrella') {
+                    sh "helm upgrade --install ${HELM_RELEASE_NAME} . --namespace ${K8S_NAMESPACE_DEV} --create-namespace --wait --timeout 10m"
+                }
+            }
+        }
+        
+        // Add Prod stage as needed
+    }
+}

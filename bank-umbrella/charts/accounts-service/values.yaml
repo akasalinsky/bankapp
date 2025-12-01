@@ -1,0 +1,15 @@
+# Default values for accounts-service.
+replicaCount: 1
+
+image:
+  repository: bank-app/accounts-service
+  tag: v1
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8081
+
+env:
+  # Defaults, overridden by ConfigMap/Secrets
+  DB_USERNAME: postgres

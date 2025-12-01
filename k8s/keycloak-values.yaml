@@ -1,0 +1,35 @@
+# Отключаем контейнеры инициализации Bitnami (которые падали)
+initContainers:
+  enabled: false
+
+# Настройки глобальной безопасности для стороннего образа
+global:
+  security:
+    allowInsecureImages: true
+
+# Параметры образа (официальный Keycloak)
+image:
+  registry: quay.io
+  repository: keycloak/keycloak
+  tag: 26.4.0
+
+# Настройки базы данных (как в вашем postgres-deployment.yaml)
+postgresql:
+  enabled: false
+externalDatabase:
+  host: postgres
+  port: 5432
+  database: bank_accounts
+  user: postgres
+  password: postgres
+
+# Настройки для доступа и администратора
+service:
+  type: ClusterIP
+ingress:
+  enabled: false # Не используем Ingress, пока не разберемся с front-ui
+auth:
+  adminUser: admin
+  adminPassword: admin
+  keycloakAdminUser: admin
+  keycloakAdminPassword: admin

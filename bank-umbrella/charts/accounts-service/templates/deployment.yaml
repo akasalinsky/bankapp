@@ -1,0 +1,66 @@
+# Deployment для микросервиса Accounts Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "accounts-service.fullname" . }}
+  labels:
+    {{- include "accounts-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "accounts-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "accounts-service.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "accounts-service.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8081
+
+          env:
+            # --- Database Configuration ---
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://{{ printf "%s-postgres-db" .Release.Name }}:5432/accounts_db"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "postgres"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-postgres-db-secret" .Release.Name }}
+                  key: POSTGRES_PASSWORD
+            
+            # --- OAuth2 Resource Server Configuration ---
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+              value: "http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm"
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+              value: "http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm/protocol/openid-connect/certs"
+
+            # --- Custom Keycloak Configuration (if used by app) ---
+            - name: KEYCLOAK_CLIENT_ID
+              value: "accounts-service-client"
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: accounts-service-oauth-secret
+                  key: CLIENT_SECRET
+            - name: KEYCLOAK_TOKEN_URL
+              value: "http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm/protocol/openid-connect/token"
+
+            # --- Disable Eureka ---
+            - name: EUREKA_CLIENT_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_DISCOVERY_ENABLED
+              value: "false"
+
+          # Health Check
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 40
+            periodSeconds: 15

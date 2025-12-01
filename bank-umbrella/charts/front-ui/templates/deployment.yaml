@@ -1,0 +1,78 @@
+# Deployment для микросервиса Front UI
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "front-ui.fullname" . }}
+  labels:
+    {{- include "front-ui.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "front-ui.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "front-ui.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ include "front-ui.name" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          env:
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: front-ui-oauth-secret
+                  key: CLIENT_SECRET
+            
+            # ISSUER URI - используем внутренний адрес для Discovery
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI
+              value: http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm
+
+            # URLs сервисов
+            - name: ACCOUNTS_SERVICE_URL
+              value: {{ .Values.app.accountsServiceUrl | quote }}
+            - name: APP_GATEWAY_URL
+              value: {{ .Values.app.gatewayUrl | quote }}
+
+            # OAuth клиент настройки
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_ID
+              value: {{ .Values.app.keycloak.clientId | quote }}
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_SCOPE
+              value: {{ .Values.app.keycloak.scope | quote }}
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_AUTHORIZATION_GRANT_TYPE
+              value: "authorization_code"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_REDIRECT_URI
+              value: "{baseUrl}/oauth2/code/{registrationId}"
+
+            # ВНУТРЕННИЕ КАНАЛЫ (BACK-CHANNEL) - для серверных запросов используем внутренний DNS
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI
+              value: http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm/protocol/openid-connect/token
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI
+              value: http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm/protocol/openid-connect/certs
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI
+              value: http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm/protocol/openid-connect/userinfo
+            
+            # AUTHORIZATION URI - для браузерных редиректов используем localhost (через port-forward)
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI
+              value: http://localhost:8080/realms/bank-realm/protocol/openid-connect/auth
+
+            # Прочие настройки
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_NAME_ATTRIBUTE
+              value: {{ .Values.app.keycloak.userNameAttribute | quote }}
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10

@@ -1,0 +1,16 @@
+# Service для микросервиса Notification Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "notification-service.fullname" . }}
+  labels:
+    {{- include "notification-service.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8086
+      targetPort: 8086
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "notification-service.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,12 @@
+# Default values for exchange-generator.
+replicaCount: 1
+
+image:
+  repository: bank-app/exchange-generator
+  tag: v1
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8084 # Same port as exchange-service? No, generator likely doesn't expose port or exposes actuator.
+  # deployment.yaml says 8084.

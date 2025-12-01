@@ -1,0 +1,25 @@
+# Namespaces for different environments
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev
+  labels:
+    environment: development
+    app: bank-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test
+  labels:
+    environment: testing
+    app: bank-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: prod
+  labels:
+    environment: production
+    app: bank-system

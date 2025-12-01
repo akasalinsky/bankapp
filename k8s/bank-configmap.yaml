@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bank-common-config
+data:
+  # Настройки для всех сервисов: отключаем старые компоненты
+  SPRING_CLOUD_CONFIG_ENABLED: "false"
+  EUREKA_CLIENT_ENABLED: "false"
+
+  # Настройки для Security (общие для всех, если не используете Secrets)
+  KEYCLOAK_SERVER_URL: "http://keycloak:8080/realms/master"
+  # ... Другие общие настройки ...

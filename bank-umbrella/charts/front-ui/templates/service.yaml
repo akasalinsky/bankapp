@@ -1,0 +1,16 @@
+# Service для микросервиса Front UI
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "front-ui.fullname" . }} # Шаблонизированное имя
+  labels:
+    {{- include "front-ui.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "front-ui.selectorLabels" . | nindent 4 }}
+  ports:
+    - protocol: TCP
+      port: 80 # Стандартный порт Service для Ingress
+      targetPort: {{ .Values.service.port }} # Порт контейнера (8088)
+      name: http

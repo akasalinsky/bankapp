@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: front-ui-config
+data:
+  application.yml: |
+    server:
+      port: 8080 # <-- МЕНЯЕМ 8088 на 8080
+
+    spring:
+      application:
+        name: front-ui
+      thymeleaf:
+        cache: false
+        prefix: classpath:/templates/
+        suffix: .html
+        encoding: UTF-8
+        content-type: text/html
+      security:
+        oauth2:
+          client:
+            registration:
+              keycloak:
+                client-id: bank-client
+                client-secret: SYQCzp4wl8miMrJCluB7o4dLfWmCNfpz
+                authorization-grant-type: authorization_code
+                # ВАЖНО: Внешний адрес через Ingress (без порта 8088!)
+                redirect-uri: "http://localhost/login/oauth2/code/keycloak"
+                scope: openid, profile, email
+            provider:
+              keycloak:
+                # ВАЖНО: Внешний адрес (то, что видит браузер) - без порта 8085
+                authorization-uri: http://localhost/realms/bank-realm/protocol/openid-connect/auth
+
+                # ВАЖНО: Внутренние адреса (то, что видит сервер внутри K8s) - keycloak:8080
+                token-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+                jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+                user-info-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
+                user-name-attribute: preferred_username
+    
+    # Твои кастомные настройки
+    app:
+      keycloak:
+        server-url: http://localhost # Внешний адрес
+        realm: bank-realm
+      gateway:
+        # ВОТ ЭТО РЕШИТ ПРОБЛЕМУ С ТВОИМ КОНТРОЛЛЕРОМ
+        # Мы говорим приложению: "твой gateway - это внешний адрес http://localhost"
+        url: http://localhost
+    
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: "*"
+
+    logging:
+      level:
+        com.practicum.bank.front_ui: DEBUG
+        org.springframework.web.client: DEBUG
+        org.springframework.security: DEBUG
+    
+    # EUREKA УДАЛЕНА ПОЛНОСТЬЮ

@@ -1,0 +1,14 @@
+# Default values for transfer-service.
+replicaCount: 1
+
+image:
+  repository: bank-app/transfer-service
+  tag: v1
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8083
+
+env:
+  DB_USERNAME: postgres

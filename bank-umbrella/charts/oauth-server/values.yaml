@@ -1,0 +1,17 @@
+# Значения для сабчарта oauth-server (Keycloak)
+replicaCount: 1
+
+image:
+  repository: quay.io/keycloak/keycloak
+  tag: 26.4.0
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+env:
+  KEYCLOAK_ADMIN: admin
+  KC_DB: postgres
+  KC_DB_USERNAME: postgres
+  # Пароли лучше передавать через Secrets, но для defaults можно оставить пустыми или placeholders

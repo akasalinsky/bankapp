@@ -1,0 +1,16 @@
+# ConfigMap для микросервиса Exchange Generator
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "exchange-generator.fullname" . }}-config
+  labels:
+    {{- include "exchange-generator.labels" . | nindent 4 }}
+data:
+  # Адрес сервера авторизации Keycloak
+  OAUTH_SERVER_URL: "http://{{ printf "%s-oauth-server" .Release.Name }}:8080/realms/bank-realm"
+
+  # Настройки безопасности/OAuth Client Credentials
+  OAUTH_CLIENT_ID: "exchange-generator-client"
+
+  # URL Exchange Service (куда генератор шлет данные)
+  EXCHANGE_SERVICE_URL: "http://{{ printf "%s-exchange-service" .Release.Name }}:8084"

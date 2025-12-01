@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "transfer-service.fullname" . }}-test-connection"
+  labels:
+    {{- include "transfer-service.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: wget
+      image: busybox:latest
+      command:
+        - wget
+        - --spider
+        - --timeout=30
+        - "http://{{ include \"transfer-service.fullname\" . }}:8083/actuator/health"
+  restartPolicy: Never

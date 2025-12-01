@@ -1,0 +1,113 @@
+{
+  "realm": "bank-realm",
+  "enabled": true,
+  "users": [
+    {
+      "username": "user",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password"
+        }
+      ],
+      "realmRoles": [
+        "user"
+      ]
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin"
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "front-ui",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "CLIENT_SECRET",
+      "redirectUris": [
+        "http://localhost:8088/*",
+        "http://bank.local/*",
+        "*"
+      ],
+      "webOrigins": [
+        "*"
+      ],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true
+    },
+    {
+      "clientId": "accounts-service-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "CLIENT_SECRET",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "cash-service-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "CLIENT_SECRET",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "transfer-service-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "CLIENT_SECRET",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "exchange-service-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "CLIENT_SECRET",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "exchange-generator-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "CLIENT_SECRET",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "blocker-service-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "CLIENT_SECRET",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    },
+    {
+      "clientId": "notification-service-client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "CLIENT_SECRET",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false
+    }
+  ]
+}

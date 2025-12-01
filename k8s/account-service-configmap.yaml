@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: account-service-config
+data:
+  application.yml: |
+    server:
+      port: 8080  # <-- МЕНЯЕМ 8081 на 8080 (стандарт в K8s)
+
+    spring:
+      application:
+        name: accounts-service
+      datasource:
+        # Убедись, что имя сервиса БД в K8s именно 'postgres'
+        url: jdbc:postgresql://postgres:5432/accounts_db
+        username: postgres
+        password: password # <-- В идеале это потом вынести в Secrets
+        driver-class-name: org.postgresql.Driver
+      jpa:
+        hibernate:
+          ddl-auto: update
+        show-sql: true
+        database-platform: org.hibernate.dialect.PostgreSQLDialect
+      
+      # НАСТРОЙКА БЕЗОПАСНОСТИ (RESOURCE SERVER)
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              # ВАЖНО: Внутренний адрес Keycloak внутри кластера
+              issuer-uri: http://keycloak:8080/realms/bank-realm
+              jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+
+    # СВОИ НАСТРОЙКИ (если используются в коде)
+    keycloak:
+      # Тоже внутренний адрес
+      token-url: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token
+      client-id: bank-client
+      client-secret: SYQCzp4wl8miMrJCluB7o4dLfWmCNfpz
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: "*"
+
+    logging:
+      level:
+        com.practicum.bank.accounts: DEBUG
+        org.springframework.security: DEBUG
+        org.hibernate.SQL: DEBUG
+    
+    # EUREKA УДАЛЕНА ПОЛНОСТЬЮ - она не нужна в K8s

@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak-deployment
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.4.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            # --- ВАЖНЫЕ ИСПРАВЛЕНИЯ ДЛЯ INGRESS ---
+
+            # Сообщаем Keycloak, что он за прокси (Nginx) и должен читать заголовки X-Forwarded
+            - name: KC_PROXY_HEADERS
+              value: "xforwarded"
+
+            # Внешний адрес. Рекомендую использовать поддомен для локальной разработки
+            - name: KC_HOSTNAME
+              value: "http://keycloak.localhost"
+
+            - name: KC_HTTP_ENABLED
+              value: "true" # Разрешаем HTTP (так как SSL терминируется на Ingress или отсутствует локально)
+
+            - name: KC_HOSTNAME_STRICT
+              value: "false" # Для локальной разработки можно отключить
+
+            - name: KC_HOSTNAME_STRICT_HTTPS
+              value: "false"
+
+            # --- НАСТРОЙКИ БАЗЫ ДАННЫХ ---
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL_HOST
+              value: postgres
+            - name: KC_DB_URL_DATABASE
+              value: bank_accounts
+            - name: KC_DB_USERNAME
+              value: postgres
+            - name: KC_DB_PASSWORD
+              value: postgres
+
+            # --- АДМИН ---
+            - name: KC_ADMIN_USERNAME
+              value: admin
+            - name: KC_ADMIN_PASSWORD
+              value: admin
+
+            # --- МЕТРИКИ ---
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
+
+          # Используем start-dev для локалки, это упрощает кэширование и strict-проверки,
+          # но для продакшена лучше start. Оставим start как у вас, так как переменные мы поправили.
+          command: ["/opt/keycloak/bin/kc.sh"]
+          args: ["start"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  labels:
+    app: keycloak
+spec:
+  type: ClusterIP
+  selector:
+    app: keycloak
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      name: http
