@@ -58,3 +58,17 @@ exchange-generator:
 notification-service:
   enabled: true # ВКЛЮЧЕН
   # ...
+
+# Apache Kafka
+kafka:
+  enabled: true
+  replicaCount: 1
+  persistence:
+    enabled: true
+    size: 5Gi
+  autoCreateTopicsEnable: false
+  zookeeper:
+    enabled: true
+    persistence:
+      enabled: true
+      size: 3Gi

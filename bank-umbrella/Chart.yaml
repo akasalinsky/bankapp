@@ -18,6 +18,11 @@ dependencies:
     repository: "file://charts/oauth-server"
     condition: oauth-server.enabled
 
+  - name: kafka
+    version: 26.8.3
+    repository: https://charts.bitnami.com/bitnami
+    condition: kafka.enabled
+
   # 2. Микросервисы
   - name: front-ui
     version: 0.1.0
