@@ -14,5 +14,5 @@ spec:
         - wget
         - --spider
         - --timeout=30
-        - "http://{{ include \"accounts-service.fullname\" . }}:8081/actuator/health"
+        - "http://{{ include "accounts-service.fullname" . }}:8081/actuator/health"
   restartPolicy: Never

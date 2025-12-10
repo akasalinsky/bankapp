@@ -10,5 +10,4 @@ service:
   type: ClusterIP
   port: 8082
 
-env:
-  DB_USERNAME: postgres
+env: []

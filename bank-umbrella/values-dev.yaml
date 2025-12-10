@@ -32,7 +32,8 @@ front-ui:
   enabled: true
   replicaCount: 1
   image:
-    tag: dev
+    tag: v1
+    pullPolicy: IfNotPresent
   resources:
     requests:
       memory: "256Mi"
@@ -51,7 +52,8 @@ accounts-service:
   enabled: true
   replicaCount: 1
   image:
-    tag: dev
+    tag: v1
+    pullPolicy: IfNotPresent
   resources:
     requests:
       memory: "256Mi"
@@ -70,7 +72,8 @@ cash-service:
   enabled: true
   replicaCount: 1
   image:
-    tag: dev
+    tag: v1
+    pullPolicy: IfNotPresent
   resources:
     requests:
       memory: "256Mi"
@@ -78,13 +81,19 @@ cash-service:
     limits:
       memory: "512Mi"
       cpu: "500m"
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "dev"
+    - name: LOGGING_LEVEL_ROOT
+      value: "DEBUG"
 
 # Transfer Service
 transfer-service:
   enabled: true
   replicaCount: 1
   image:
-    tag: dev
+    tag: v1
+    pullPolicy: IfNotPresent
   resources:
     requests:
       memory: "256Mi"
@@ -92,13 +101,19 @@ transfer-service:
     limits:
       memory: "512Mi"
       cpu: "500m"
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "dev"
+    - name: LOGGING_LEVEL_ROOT
+      value: "DEBUG"
 
 # Exchange Service
 exchange-service:
   enabled: true
   replicaCount: 1
   image:
-    tag: dev
+    tag: v1
+    pullPolicy: IfNotPresent
   resources:
     requests:
       memory: "256Mi"
@@ -106,20 +121,27 @@ exchange-service:
     limits:
       memory: "512Mi"
       cpu: "500m"
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "dev"
+    - name: LOGGING_LEVEL_ROOT
+      value: "DEBUG"
 
 # Exchange Generator
 exchange-generator:
   enabled: true
   replicaCount: 1
   image:
-    tag: dev
+    tag: v1
+    pullPolicy: IfNotPresent
 
 # Notification Service
 notification-service:
   enabled: true
   replicaCount: 1
   image:
-    tag: dev
+    tag: v1
+    pullPolicy: IfNotPresent
   resources:
     requests:
       memory: "256Mi"
@@ -136,3 +158,16 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
+
+#Kafka
+kafka:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/kafka
+    tag: 3.6.1-debian-11-r3
+    pullPolicy: IfNotPresent
+  kraft:
+    enabled: true
+  zookeeper:
+    enabled: false

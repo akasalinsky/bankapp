@@ -14,5 +14,5 @@ spec:
         - wget
         - --spider
         - --timeout=30
-        - "http://{{ include \"oauth-server.fullname\" . }}:8080/health/ready"
+        - "http://{{ include "oauth-server.fullname" . }}:8080/health/ready"
   restartPolicy: Never

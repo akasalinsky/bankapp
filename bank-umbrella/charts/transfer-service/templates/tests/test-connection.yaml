@@ -14,5 +14,5 @@ spec:
         - wget
         - --spider
         - --timeout=30
-        - "http://{{ include \"transfer-service.fullname\" . }}:8083/actuator/health"
+        - "http://{{ include "transfer-service.fullname" . }}:8083/actuator/health"
   restartPolicy: Never

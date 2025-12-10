@@ -62,13 +62,16 @@ notification-service:
 # Apache Kafka
 kafka:
   enabled: true
+  image:
+    registry: docker.io
+    repository: bitnami/kafka
+    tag: 3.6.1
   replicaCount: 1
   persistence:
     enabled: true
     size: 5Gi
   autoCreateTopicsEnable: false
-  zookeeper:
+  kraft:
     enabled: true
-    persistence:
-      enabled: true
-      size: 3Gi
+  zookeeper:
+    enabled: false
