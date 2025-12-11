@@ -20,6 +20,12 @@ spring:
         jwt:
           issuer-uri: http://localhost:8085/realms/bank-realm
           jwk-set-uri: http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
+    # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+kafka:
+  topic:
+    notifications: notifications
 
 keycloak:
   token-url: http://host.docker.internal:8085/realms/bank-realm/protocol/openid-connect/token
@@ -50,5 +56,7 @@ logging:
     com.practicum.bank.accounts: DEBUG
     org.springframework.security: DEBUG
     org.hibernate.SQL: DEBUG
+
+
 
 
