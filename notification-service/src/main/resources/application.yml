@@ -8,3 +8,13 @@ spring:
 logging:
   level:
     com.practicum.bank.notification-serivce: DEBUG
+
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: notification-group
+
+kafka:
+  topic:
+    notifications: notifications
